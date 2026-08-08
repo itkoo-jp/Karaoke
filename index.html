@@ -116,6 +116,13 @@
   input[type=range] { -webkit-appearance: none; background: transparent; }
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-thumb { background: #3a3f52; border-radius: 3px; }
+
+  .tap-fixed {
+    position: fixed; left: 0; right: 0; bottom: 0; margin: 0 auto;
+    max-width: 640px; z-index: 100;
+    border-radius: 18px 18px 0 0 !important;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.6);
+  }
 </style>
 </head>
 <body>
@@ -123,6 +130,15 @@
   <div class="eyebrow">PERSONAL KARAOKE STUDIO</div>
   <h1>Sotto le Luci</h1>
   <div class="rule"></div>
+
+  <div class="row">
+    <label class="filebox">
+      <span id="projectLoadLabel">プロジェクトファイルを読み込む(まとめて復元)</span>
+      <span style="color:#C9A227; font-weight:600; white-space:nowrap;">開く</span>
+      <input type="file" id="projectLoadInput" accept=".json" />
+    </label>
+    <div class="btn-secondary" id="projectSaveBtn">プロジェクトを保存</div>
+  </div>
 
   <div class="row">
     <label class="filebox">
@@ -226,6 +242,7 @@
   let timerStart = 0;
   let rafId = null;
   let lyricWindows = []; // [{start, end}] 歌詞が存在する時間帯だけ音程バーを表示するため
+  let audioFileRef = null; // プロジェクト保存用に音源ファイルを保持
 
   const lyricsBox = document.getElementById('lyricsBox');
   const lrcInput = document.getElementById('lrcInput');
@@ -457,10 +474,14 @@
       tapIdx = 0;
       updateTapUI();
       tapSyncPanel.style.display = 'block';
+      tapSyncPanel.classList.add('tap-fixed');
+      document.body.style.paddingBottom = '280px';
       tapSyncToggle.classList.add('active');
       tapSyncToggle.textContent = 'タップ同期を終了';
     } else {
       tapSyncPanel.style.display = 'none';
+      tapSyncPanel.classList.remove('tap-fixed');
+      document.body.style.paddingBottom = '';
       tapSyncToggle.classList.remove('active');
       tapSyncToggle.textContent = 'タップ同期で精度を上げる';
     }
@@ -488,6 +509,8 @@
     applyTapTimes();
     tapSyncActive = false;
     tapSyncPanel.style.display = 'none';
+    tapSyncPanel.classList.remove('tap-fixed');
+    document.body.style.paddingBottom = '';
     tapSyncToggle.classList.remove('active');
     tapSyncToggle.textContent = 'タップ同期で精度を上げる';
   });
@@ -506,14 +529,18 @@
     downloadLrcBtn.style.display = 'block';
   }
 
-  downloadLrcBtn.addEventListener('click', () => {
+  function buildWordLrcText() {
     const out = [];
     lines.forEach(l => {
       (l.wordTimes || []).forEach(w => {
         out.push(`[${formatLRCTime(w.time)}]${w.word}`);
       });
     });
-    const blob = new Blob([out.join('\n')], { type: 'text/plain' });
+    return out.join('\n');
+  }
+
+  downloadLrcBtn.addEventListener('click', () => {
+    const blob = new Blob([buildWordLrcText()], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -522,6 +549,91 @@
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+  });
+
+  // ==================== プロジェクトの保存・読み込み ====================
+  const projectLoadInput = document.getElementById('projectLoadInput');
+  const projectLoadLabel = document.getElementById('projectLoadLabel');
+  const projectSaveBtn = document.getElementById('projectSaveBtn');
+
+  projectSaveBtn.addEventListener('click', () => {
+    const finish = (audioDataUrl) => {
+      const project = {
+        audioName: audioFileRef ? audioFileRef.name : null,
+        audioDataUrl: audioDataUrl,
+        lrcText: lrcInput.value,
+        pitchJson: referenceCurve,
+        wordLrcText: lines.some(l => l.wordTimesReal) ? buildWordLrcText() : null,
+      };
+      const blob = new Blob([JSON.stringify(project)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'karaoke_project.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    };
+    if (audioFileRef) {
+      const reader = new FileReader();
+      reader.onload = () => finish(reader.result);
+      reader.readAsDataURL(audioFileRef);
+    } else {
+      finish(null);
+    }
+  });
+
+  projectLoadInput.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    projectLoadLabel.textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+
+        if (data.audioDataUrl) {
+          player.src = data.audioDataUrl;
+          player.style.display = 'block';
+          player.load();
+          audioLabel.textContent = data.audioName || '音源(プロジェクトから復元)';
+          audioFileRef = null; // data URLはFile参照ではないため保存時は再度読み込みが必要
+          useTimerMode = false;
+          timerControls.style.display = 'none';
+          toggleTimerMode.parentElement.style.display = 'block';
+        }
+
+        if (typeof data.lrcText === 'string') {
+          lrcInput.value = data.lrcText;
+          lines = parseLRC(lrcInput.value);
+        }
+
+        if (data.pitchJson) {
+          referenceCurve = data.pitchJson;
+          referenceNotes = buildNotes(referenceCurve);
+          pitchLabel.textContent = 'ピッチデータ(プロジェクトから復元)';
+          highway.style.display = 'block';
+          startHighwayLoop();
+        }
+
+        if (typeof data.wordLrcText === 'string' && data.wordLrcText) {
+          const tokens = parseLRC(data.wordLrcText);
+          const wordTokens = tokens.map(t => ({ time: t.time, word: t.text }));
+          alignWordsToLines(wordTokens);
+          wordTimingLabel.textContent = '単語タイミング(プロジェクトから復元)';
+        }
+
+        renderLyrics();
+        buildLyricWindows();
+        updateActiveLine(0);
+        errorMsg.style.display = 'none';
+      } catch (err) {
+        errorMsg.textContent = 'プロジェクトファイルの読み込みに失敗しました';
+        errorMsg.style.display = 'block';
+      }
+    };
+    reader.readAsText(file);
   });
 
   document.getElementById('autoSplit').addEventListener('click', () => {
@@ -574,6 +686,7 @@
     if (!file) return;
     errorMsg.style.display = 'none';
     audioLabel.textContent = file.name;
+    audioFileRef = file;
     const url = URL.createObjectURL(file);
     player.src = url;
     player.style.display = 'block';
