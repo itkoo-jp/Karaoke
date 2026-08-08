@@ -515,6 +515,13 @@
     updateTapUI();
     if (tapIdx >= flatWords.length) {
       applyTapTimes();
+      downloadWordLrc();
+      tapSyncActive = false;
+      tapSyncPanel.style.display = 'none';
+      tapSyncPanel.classList.remove('tap-fixed');
+      document.body.style.paddingBottom = '';
+      tapSyncToggle.classList.remove('active');
+      tapSyncToggle.textContent = 'タップ同期で精度を上げる';
     }
   });
 
@@ -525,8 +532,21 @@
     }
   });
 
+  function downloadWordLrc() {
+    const blob = new Blob([buildWordLrcText()], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'lyrics_words_corrected.lrc';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   tapFinish.addEventListener('click', () => {
     applyTapTimes();
+    downloadWordLrc();
     tapSyncActive = false;
     tapSyncPanel.style.display = 'none';
     tapSyncPanel.classList.remove('tap-fixed');
@@ -559,17 +579,7 @@
     return out.join('\n');
   }
 
-  downloadLrcBtn.addEventListener('click', () => {
-    const blob = new Blob([buildWordLrcText()], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'lyrics_words_corrected.lrc';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  });
+  downloadLrcBtn.addEventListener('click', downloadWordLrc);
 
   // ==================== プロジェクトの保存・読み込み ====================
   const projectLoadInput = document.getElementById('projectLoadInput');
