@@ -377,6 +377,7 @@
         }
       }
       l.wordTimes = wordTimes;
+      l.wordTimesReal = true;
     });
   }
 
@@ -391,6 +392,7 @@
         const wordTokens = tokens.map(t => ({ time: t.time, word: t.text }));
         alignWordsToLines(wordTokens);
         renderLyrics();
+        buildLyricWindows();
         updateActiveLine(useTimerMode ? timerCurrent : (player.src ? player.currentTime : 0));
         errorMsg.style.display = 'none';
       } catch (err) {
@@ -614,10 +616,25 @@
   let highwayCssW = 640, highwayCssH = 140;
 
   function buildLyricWindows() {
-    lyricWindows = lines.map((l, i) => {
-      const nextT = (i + 1 < lines.length) ? lines[i + 1].time : l.time + 6;
-      return { start: l.time - 0.3, end: Math.min(nextT, l.time + 8) };
-    });
+    const hasWordTimes = lines.length > 0 && lines[0].wordTimes && lines[0].wordTimesReal;
+    if (hasWordTimes) {
+      // 単語ごとの実データがある場合は、単語単位のタイトなウィンドウを作る
+      const windows = [];
+      lines.forEach((l, i) => {
+        const wt = l.wordTimes;
+        const nextLineT = (i + 1 < lines.length) ? lines[i + 1].time : l.time + 6;
+        wt.forEach((w, wi) => {
+          const nextWordT = (wi + 1 < wt.length) ? wt[wi + 1].time : nextLineT;
+          windows.push({ start: w.time - 0.15, end: Math.min(nextWordT, w.time + 1.2) });
+        });
+      });
+      lyricWindows = windows;
+    } else {
+      lyricWindows = lines.map((l, i) => {
+        const nextT = (i + 1 < lines.length) ? lines[i + 1].time : l.time + 6;
+        return { start: l.time - 0.3, end: Math.min(nextT, l.time + 8) };
+      });
+    }
   }
 
   function isInLyricWindow(t) {
