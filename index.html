@@ -148,6 +148,25 @@
 
   <canvas id="pitchHighway" width="640" height="140" style="display:none; width:100%; max-width:640px; height:140px; background:#0c0e15; border:1px solid #262a3a; border-radius:14px; margin-bottom:14px;"></canvas>
 
+  <div class="row">
+    <div class="btn-secondary" id="tapSyncToggle">タップ同期で精度を上げる</div>
+    <div class="btn-secondary" id="downloadLrc" style="display:none;">修正後LRCを保存</div>
+  </div>
+
+  <div id="tapSyncPanel" style="display:none; width:100%; max-width:640px; margin-bottom:20px;">
+    <div style="background:#12141d; border:1px solid #C9A227; border-radius:14px; padding:20px; text-align:center;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#8b8f9e; letter-spacing:.2em; margin-bottom:10px;">TAP SYNC</div>
+      <div id="tapNextWord" style="font-family:'Playfair Display',serif; font-size:28px; font-weight:700; color:#F4EFE0; margin-bottom:6px;">-</div>
+      <div id="tapProgress" style="font-size:12px; color:#565b6e; margin-bottom:16px;">0 / 0</div>
+      <button id="tapButton" style="width:100%; padding:22px; border-radius:14px; border:none; background:#C9A227; color:#14171f; font-size:17px; font-weight:700; cursor:pointer;">この単語が来たらタップ</button>
+      <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
+        <button id="tapUndo" style="flex:1; padding:10px; border-radius:8px; border:1px solid #2c3145; background:#1D2130; color:#c7cad6; font-size:13px;">ひとつ戻す</button>
+        <button id="tapFinish" style="flex:1; padding:10px; border-radius:8px; border:1px solid #2c3145; background:#1D2130; color:#c7cad6; font-size:13px;">終了して保存</button>
+      </div>
+      <div style="font-size:11.5px; color:#565b6e; margin-top:12px; line-height:1.6;">再生を押してから、画面の単語が実際に歌われた瞬間に大きいボタンをタップしてください。曲の最初から順番に進みます。</div>
+    </div>
+  </div>
+
   <div id="lyricsBox"></div>
 
   <audio id="player" controls style="display:none;"></audio>
@@ -401,6 +420,108 @@
       }
     };
     reader.readAsText(file);
+  });
+
+  // ==================== タップ同期 ====================
+  const tapSyncToggle = document.getElementById('tapSyncToggle');
+  const tapSyncPanel = document.getElementById('tapSyncPanel');
+  const tapNextWord = document.getElementById('tapNextWord');
+  const tapProgress = document.getElementById('tapProgress');
+  const tapButton = document.getElementById('tapButton');
+  const tapUndo = document.getElementById('tapUndo');
+  const tapFinish = document.getElementById('tapFinish');
+  const downloadLrcBtn = document.getElementById('downloadLrc');
+
+  let flatWords = []; // {lineIdx, wordIdx, word, time}
+  let tapIdx = 0;
+  let tapSyncActive = false;
+
+  function buildFlatWords() {
+    flatWords = [];
+    lines.forEach((l, li) => {
+      (l.wordTimes || []).forEach((w, wi) => {
+        flatWords.push({ lineIdx: li, wordIdx: wi, word: w.word, time: w.time });
+      });
+    });
+  }
+
+  function updateTapUI() {
+    tapProgress.textContent = `${tapIdx} / ${flatWords.length}`;
+    tapNextWord.textContent = tapIdx < flatWords.length ? flatWords[tapIdx].word : '完了';
+  }
+
+  tapSyncToggle.addEventListener('click', () => {
+    tapSyncActive = !tapSyncActive;
+    if (tapSyncActive) {
+      buildFlatWords();
+      tapIdx = 0;
+      updateTapUI();
+      tapSyncPanel.style.display = 'block';
+      tapSyncToggle.classList.add('active');
+      tapSyncToggle.textContent = 'タップ同期を終了';
+    } else {
+      tapSyncPanel.style.display = 'none';
+      tapSyncToggle.classList.remove('active');
+      tapSyncToggle.textContent = 'タップ同期で精度を上げる';
+    }
+  });
+
+  tapButton.addEventListener('click', () => {
+    if (tapIdx >= flatWords.length) return;
+    const t = useTimerMode ? timerCurrent : (player.src ? player.currentTime : 0);
+    flatWords[tapIdx].time = t;
+    tapIdx++;
+    updateTapUI();
+    if (tapIdx >= flatWords.length) {
+      applyTapTimes();
+    }
+  });
+
+  tapUndo.addEventListener('click', () => {
+    if (tapIdx > 0) {
+      tapIdx--;
+      updateTapUI();
+    }
+  });
+
+  tapFinish.addEventListener('click', () => {
+    applyTapTimes();
+    tapSyncActive = false;
+    tapSyncPanel.style.display = 'none';
+    tapSyncToggle.classList.remove('active');
+    tapSyncToggle.textContent = 'タップ同期で精度を上げる';
+  });
+
+  function applyTapTimes() {
+    // タップ済みの分だけ実際の時刻を反映する(未タップ分は元のままにする)
+    flatWords.forEach((fw, i) => {
+      if (i < tapIdx) {
+        lines[fw.lineIdx].wordTimes[fw.wordIdx].time = fw.time;
+      }
+    });
+    lines.forEach(l => { l.wordTimesReal = true; });
+    renderLyrics();
+    buildLyricWindows();
+    updateActiveLine(useTimerMode ? timerCurrent : (player.src ? player.currentTime : 0));
+    downloadLrcBtn.style.display = 'block';
+  }
+
+  downloadLrcBtn.addEventListener('click', () => {
+    const out = [];
+    lines.forEach(l => {
+      (l.wordTimes || []).forEach(w => {
+        out.push(`[${formatLRCTime(w.time)}]${w.word}`);
+      });
+    });
+    const blob = new Blob([out.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'lyrics_words_corrected.lrc';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   });
 
   document.getElementById('autoSplit').addEventListener('click', () => {
