@@ -427,6 +427,14 @@
       l.wordTimes = wordTimes;
       l.wordTimesReal = true;
     });
+    // 行自体の開始時刻も、実データの先頭単語に合わせて更新する
+    // (ここがズレていると、単語の色付けは合っていても行がハイライトされる
+    //  タイミング自体が古い推測値のままになり、大きくズレて見える)
+    lines.forEach(l => {
+      if (l.wordTimes && l.wordTimes.length > 0) {
+        l.time = l.wordTimes[0].time;
+      }
+    });
   }
 
   wordTimingInput.addEventListener('change', (e) => {
@@ -560,6 +568,14 @@
     flatWords.forEach((fw, i) => {
       if (i < tapIdx) {
         lines[fw.lineIdx].wordTimes[fw.wordIdx].time = fw.time;
+      }
+    });
+    // 行自体の開始時刻も、タップ済みの先頭単語に合わせて更新する
+    // (これをしないと、行がハイライトされる/中央にスクロールされるタイミングが
+    //  古いままになり、単語の色付けだけ合っていても大きくズレて見える)
+    lines.forEach(l => {
+      if (l.wordTimes && l.wordTimes.length > 0) {
+        l.time = l.wordTimes[0].time;
       }
     });
     lines.forEach(l => { l.wordTimesReal = true; });
