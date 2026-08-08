@@ -76,14 +76,13 @@
     width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
     transform: translateY(-1px);
   }
-  .line .text { font-size: 15px; color: #9295a3; line-height: 1.5; transition: all .25s ease; position: relative; display: inline-block; }
+  .line .text { font-size: 15px; color: #9295a3; line-height: 1.5; transition: color .25s ease; position: relative; }
   .line.active { background: rgba(201,162,39,0.14); }
   .line.active .dot { background: #C9A227; box-shadow: 0 0 10px 2px rgba(201,162,39,0.7); }
-  .line.active .text { font-size: 20px; font-weight: 700; color: #F4EFE0; }
-  .line.active .text .wipe-bar {
-    position: absolute; left: 0; bottom: -4px; height: 3px;
-    width: var(--wipe, 0%); background: #C9A227; border-radius: 2px;
-  }
+  .line.active .text { font-size: 20px; font-weight: 700; }
+  .line.active .text .ch { color: #565b6e; transition: color .12s linear; }
+  .line.active .text .ch.sung { color: #F4EFE0; text-shadow: 0 0 12px rgba(201,162,39,0.5); }
+  .line.active .text .ch.current { color: #C9A227; }
   .line.past .text { color: #4a4e5e; }
   #placeholder { color: #6b6f80; font-size: 14px; text-align: center; }
 
@@ -247,8 +246,16 @@
       const div = document.createElement('div');
       div.className = 'line';
       div.dataset.idx = i;
-      div.innerHTML = '<span class="dot"></span><span class="text"><span class="wipe-bar"></span></span>';
-      div.querySelector('.text').prepend(document.createTextNode(l.text));
+      const textSpan = document.createElement('span');
+      textSpan.className = 'text';
+      [...l.text].forEach(ch => {
+        const chSpan = document.createElement('span');
+        chSpan.className = 'ch';
+        chSpan.textContent = ch;
+        textSpan.appendChild(chSpan);
+      });
+      div.innerHTML = '<span class="dot"></span>';
+      div.appendChild(textSpan);
       div.addEventListener('click', () => seekTo(l.time));
       lyricsBox.appendChild(div);
     });
@@ -267,8 +274,13 @@
         const start = lines[i].time;
         const end = (i + 1 < lines.length) ? lines[i + 1].time : start + 4;
         const dur = Math.max(0.3, end - start);
-        const pct = Math.max(0, Math.min(100, ((current - start) / dur) * 100));
-        el.querySelector('.text').style.setProperty('--wipe', pct + '%');
+        const pct = Math.max(0, Math.min(1, (current - start) / dur));
+        const chars = el.querySelectorAll('.ch');
+        const sungCount = Math.floor(chars.length * pct);
+        chars.forEach((c, ci) => {
+          c.classList.toggle('sung', ci < sungCount);
+          c.classList.toggle('current', ci === sungCount);
+        });
       }
     });
     if (idx >= 0 && els[idx]) {
