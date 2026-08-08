@@ -199,6 +199,7 @@
   let timerOffset = 0;
   let timerStart = 0;
   let rafId = null;
+  let lyricWindows = []; // [{start, end}] 歌詞が存在する時間帯だけ音程バーを表示するため
 
   const lyricsBox = document.getElementById('lyricsBox');
   const lrcInput = document.getElementById('lrcInput');
@@ -512,8 +513,6 @@
   const PLAYHEAD_RATIO = WINDOW_BEFORE / (WINDOW_BEFORE + WINDOW_AFTER);
 
   let highwayCssW = 640, highwayCssH = 140;
-
-  let lyricWindows = []; // [{start, end}] 歌詞が存在する時間帯だけ音程バーを表示するため
 
   function buildLyricWindows() {
     lyricWindows = lines.map((l, i) => {
