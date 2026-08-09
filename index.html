@@ -994,22 +994,26 @@
   let highwayRafId = null;
 
   function buildNotes(curve) {
+    // 無音判定を挟んでも、半音レーンが同じで間隔が短ければ同じ音として繋げる
+    // (DAMのように、こまごまとした断片ではなく、まとまった長いバーにするため)
+    const GAP_TOL = 0.28; // これ以下の途切れは同じ音とみなす(秒)
+    const MIN_NOTE_LEN = 0.12; // これより短い音符はノイズとして除去(秒)
+
+    const voiced = curve.filter(p => p.hz);
     const notes = [];
     let cur = null;
-    for (const p of curve) {
-      if (p.hz) {
-        if (cur && Math.abs(1200 * Math.log2(p.hz / cur.hz)) < 60 && p.t - cur.end < 0.12) {
-          cur.end = p.t;
-        } else {
-          if (cur) notes.push(cur);
-          cur = { start: p.t, end: p.t, hz: p.hz };
-        }
+    for (const p of voiced) {
+      const midi = Math.round(69 + 12 * Math.log2(p.hz / 440));
+      if (cur && midi === cur.midi && (p.t - cur.end) < GAP_TOL) {
+        cur.end = p.t;
       } else {
-        if (cur) { notes.push(cur); cur = null; }
+        if (cur) notes.push(cur);
+        cur = { start: p.t, end: p.t, midi, hz: 440 * Math.pow(2, (midi - 69) / 12) };
       }
     }
     if (cur) notes.push(cur);
-    return notes;
+
+    return notes.filter(n => (n.end - n.start) >= MIN_NOTE_LEN);
   }
 
   pitchInput.addEventListener('change', (e) => {
