@@ -284,14 +284,14 @@
     </div>
   </div>
 
-  <div id="finalScore" style="display:none; position:fixed; inset:0; z-index:300; align-items:center; justify-content:center; background:rgba(6,7,12,0.85); backdrop-filter: blur(4px);">
-    <div style="width:88%; max-width:420px; text-align:center; padding:40px 28px; background:#161a26; border:1px solid #C9A227; border-radius:22px; box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+  <div id="finalScore" style="display:none; position:fixed; inset:0; height:100dvh; z-index:300; align-items:center; justify-content:center; background:rgba(6,7,12,0.9);">
+    <div id="finalScoreCard" style="width:88%; max-width:420px; text-align:center; padding:40px 28px; background:#161a26; border:1px solid #C9A227; border-radius:22px; box-shadow:0 20px 60px rgba(0,0,0,0.6);">
       <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:#8b8f9e; letter-spacing:.35em; margin-bottom:18px;">FINAL SCORE</div>
       <div>
         <span id="finalScoreNum" style="font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:76px; color:#F4EFE0; text-shadow:0 0 30px rgba(201,162,39,0.4);">--</span>
       </div>
       <div style="font-size:16px; color:#8b8f9e; margin-top:2px; margin-bottom:28px;">/ 100点</div>
-      <button id="closeFinalScore" style="background:#C9A227; color:#14171f; border:none; border-radius:999px; padding:12px 32px; font-size:14px; font-weight:700; cursor:pointer;">閉じる</button>
+      <button id="closeFinalScore" style="background:#C9A227; color:#14171f; border:none; border-radius:999px; padding:14px 40px; font-size:15px; font-weight:700; cursor:pointer; touch-action:manipulation;">閉じる</button>
     </div>
   </div>
 
@@ -1237,9 +1237,20 @@
     if (scoreSamples.length > 0) {
       const avg = scoreSamples.reduce((a, b) => a + b, 0) / scoreSamples.length;
       finalScoreNum.textContent = avg.toFixed(1);
-      finalScoreBox.style.display = 'block';
+      window.scrollTo(0, 0);
+      finalScoreBox.style.display = 'flex';
     }
   }
+
+  document.getElementById('closeFinalScore').addEventListener('click', () => {
+    finalScoreBox.style.display = 'none';
+  });
+  // 背景(カードの外側)をタップしても閉じられるようにする
+  finalScoreBox.addEventListener('click', (e) => {
+    if (e.target === finalScoreBox) {
+      finalScoreBox.style.display = 'none';
+    }
+  });
 
   scoreToggle.addEventListener('click', () => {
     if (scoring) stopScoring(); else startScoring();
