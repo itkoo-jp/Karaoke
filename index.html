@@ -131,12 +131,11 @@
   body.perform-mode #artistName { margin-bottom: 8px; }
   body.perform-mode { padding-top: 16px; }
 
-  /* 本番モードでの表示順: タイトル→歌詞(現在+次の行)→音程バー→再生/採点 */
-  body.perform-mode #lyricsBox { order: 2; margin-top: 4px; }
-  body.perform-mode #pitchHighway { order: 3; height: 170px !important; margin-top: 4px; }
+  /* 本番モードでの表示順: タイトル→音程バー→歌詞(現在+次の行)→再生/採点 */
+  body.perform-mode #pitchHighway { order: 2; height: 170px !important; margin-top: 4px; }
+  body.perform-mode #lyricsBox { order: 3; margin-top: 4px; }
   body.perform-mode audio#player { order: 4; }
   body.perform-mode #scorePanel { order: 5; }
-  body.perform-mode #finalScore { order: 6; }
   body.perform-mode .error { order: 7; }
 
   /* 歌詞は「現在の行」と「次の行」だけを表示 */
@@ -285,11 +284,14 @@
     </div>
   </div>
 
-  <div id="finalScore" style="display:none; width:100%; max-width:640px; text-align:center; margin-bottom:20px; padding:24px; background:#12141d; border:1px solid #C9A227; border-radius:14px;">
-    <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#8b8f9e; letter-spacing:.3em; margin-bottom:8px;">FINAL SCORE</div>
-    <div>
-      <span id="finalScoreNum" style="font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:48px; color:#F4EFE0;">--</span>
-      <span style="font-size:16px; color:#8b8f9e;"> / 100点</span>
+  <div id="finalScore" style="display:none; position:fixed; inset:0; z-index:300; align-items:center; justify-content:center; background:rgba(6,7,12,0.85); backdrop-filter: blur(4px);">
+    <div style="width:88%; max-width:420px; text-align:center; padding:40px 28px; background:#161a26; border:1px solid #C9A227; border-radius:22px; box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:#8b8f9e; letter-spacing:.35em; margin-bottom:18px;">FINAL SCORE</div>
+      <div>
+        <span id="finalScoreNum" style="font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:76px; color:#F4EFE0; text-shadow:0 0 30px rgba(201,162,39,0.4);">--</span>
+      </div>
+      <div style="font-size:16px; color:#8b8f9e; margin-top:2px; margin-bottom:28px;">/ 100点</div>
+      <button id="closeFinalScore" style="background:#C9A227; color:#14171f; border:none; border-radius:999px; padding:12px 32px; font-size:14px; font-weight:700; cursor:pointer;">閉じる</button>
     </div>
   </div>
 
