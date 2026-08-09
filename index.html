@@ -131,6 +131,13 @@
   body.perform-mode #artistName { margin-bottom: 8px; }
   body.perform-mode { padding-top: 16px; padding-bottom: 100px; }
   body.perform-mode #scorePanel { display: none !important; }
+  body.perform-mode h1 { font-size: clamp(30px, 7vw, 42px) !important; margin-bottom: 6px; }
+  body.perform-mode #artistName { font-size: 19px !important; margin-bottom: 16px !important; color: #c7cad6 !important; }
+  body.perform-mode #scoreToggleRow { order: 6; margin-bottom: 8px; }
+  body.perform-mode #scoreToggle {
+    font-size: 12px !important; padding: 7px 16px !important;
+    opacity: 0.8;
+  }
 
   /* 本番モードでの表示順: タイトル→音程バー→歌詞(現在+次の行)→再生/採点 */
   body.perform-mode #pitchHighway { order: 2; height: 170px !important; margin-top: 4px; }
@@ -272,7 +279,7 @@
     </label>
   </div>
 
-  <div class="row" style="justify-content:center;">
+  <div class="row" id="scoreToggleRow" style="justify-content:center;">
     <div class="btn-secondary" id="scoreToggle" style="flex:0 0 auto; font-size:15px; padding:14px 32px;">採点スタート</div>
   </div>
 
@@ -1031,6 +1038,14 @@
     return h - ((v - lo) / (hi - lo)) * h;
   }
 
+  // DAMのような判定レーンにするため、周波数を半音(セミトーン)単位にスナップする
+  function quantizeToSemitone(hz) {
+    if (!hz || hz <= 0) return hz;
+    const midi = 69 + 12 * Math.log2(hz / 440);
+    const rounded = Math.round(midi);
+    return 440 * Math.pow(2, (rounded - 69) / 12);
+  }
+
   const WINDOW_BEFORE = 1.2, WINDOW_AFTER = 3.0; // 再生位置の前後何秒を表示するか
   const PLAYHEAD_RATIO = WINDOW_BEFORE / (WINDOW_BEFORE + WINDOW_AFTER);
 
@@ -1072,16 +1087,30 @@
     const winStart = t - WINDOW_BEFORE, winEnd = t + WINDOW_AFTER;
     const pxPerSec = w / (WINDOW_BEFORE + WINDOW_AFTER);
 
-    // ノートバーを描画(歌詞が存在する時間帯のみ)
+    // 半音ごとの判定レーンのガイド線(DAM風)
+    hctx.strokeStyle = 'rgba(255,255,255,0.045)';
+    hctx.lineWidth = 1;
+    const loMidi = Math.ceil(69 + 12 * Math.log2(HZ_MIN / 440));
+    const hiMidi = Math.floor(69 + 12 * Math.log2(HZ_MAX / 440));
+    for (let m = loMidi; m <= hiMidi; m++) {
+      const laneHz = 440 * Math.pow(2, (m - 69) / 12);
+      const ly = hzToY(laneHz, h);
+      hctx.beginPath();
+      hctx.moveTo(0, ly);
+      hctx.lineTo(w, ly);
+      hctx.stroke();
+    }
+
+    // ノートバーを描画(歌詞が存在する時間帯のみ、半音レーンにスナップ)
     for (const n of referenceNotes) {
       if (n.end < winStart || n.start > winEnd) continue;
       if (!isInLyricWindow(n.start)) continue;
       const x1 = (n.start - winStart) * pxPerSec;
       const x2 = (n.end - winStart) * pxPerSec;
-      const y = hzToY(n.hz, h);
+      const y = hzToY(quantizeToSemitone(n.hz), h);
       hctx.fillStyle = (n.start <= t && n.end >= t) ? '#C9A227' : 'rgba(201,162,39,0.55)';
       hctx.beginPath();
-      hctx.roundRect ? hctx.roundRect(x1, y - 4, Math.max(2, x2 - x1), 8, 4) : hctx.rect(x1, y - 4, Math.max(2, x2 - x1), 8);
+      hctx.roundRect ? hctx.roundRect(x1, y - 5, Math.max(2, x2 - x1), 10, 5) : hctx.rect(x1, y - 5, Math.max(2, x2 - x1), 10);
       hctx.fill();
     }
 
@@ -1091,22 +1120,22 @@
     hctx.lineWidth = 1;
     hctx.beginPath(); hctx.moveTo(px, 0); hctx.lineTo(px, h); hctx.stroke();
 
-    // 歌った音程の軌跡(過去に発声した分もウィンドウ内なら残して表示)
+    // 歌った音程の軌跡(過去に発声した分もウィンドウ内なら残して表示、半音レーンにスナップ)
     if (sungTrail.length > 0) {
       for (const s of sungTrail) {
         if (s.t < winStart || s.t > winEnd) continue;
         const x = (s.t - winStart) * pxPerSec;
-        const y = hzToY(s.hz, h);
+        const y = hzToY(quantizeToSemitone(s.hz), h);
         hctx.fillStyle = s.ok ? 'rgba(224,138,122,0.85)' : 'rgba(224,138,122,0.35)';
         hctx.beginPath();
-        hctx.arc(x, y, 2.5, 0, Math.PI * 2);
+        hctx.arc(x, y, 3, 0, Math.PI * 2);
         hctx.fill();
       }
     }
 
-    // 自分の声(ライブピッチ)をプレイヘッド上に強調表示
+    // 自分の声(ライブピッチ)をプレイヘッド上に強調表示(半音レーンにスナップ)
     if (scoring && liveHz > 0) {
-      const y = hzToY(liveHz, h);
+      const y = hzToY(quantizeToSemitone(liveHz), h);
       hctx.fillStyle = '#e08a7a';
       hctx.beginPath();
       hctx.arc(px, y, 6, 0, Math.PI * 2);
