@@ -127,10 +127,28 @@
   body.perform-mode .edit-only { display: none !important; }
   body.perform-mode .eyebrow,
   body.perform-mode .rule { display: none !important; }
-  body.perform-mode h1 { font-size: clamp(22px, 4vw, 30px); margin-bottom: 4px; }
-  body.perform-mode { padding-top: 18px; }
-  body.perform-mode #pitchHighway { height: 190px !important; }
-  body.perform-mode #lyricsBox { height: 40vh; }
+  body.perform-mode h1 { font-size: clamp(20px, 4vw, 26px); margin-bottom: 2px; }
+  body.perform-mode #artistName { margin-bottom: 8px; }
+  body.perform-mode { padding-top: 16px; }
+
+  /* 本番モードでの表示順: タイトル→歌詞(現在+次の行)→音程バー→再生/採点 */
+  body.perform-mode #lyricsBox { order: 2; margin-top: 4px; }
+  body.perform-mode #pitchHighway { order: 3; height: 170px !important; margin-top: 4px; }
+  body.perform-mode audio#player { order: 4; }
+  body.perform-mode #scorePanel { order: 5; }
+  body.perform-mode #finalScore { order: 6; }
+  body.perform-mode .error { order: 7; }
+
+  /* 歌詞は「現在の行」と「次の行」だけを表示 */
+  body.perform-mode #lyricsBox {
+    height: auto; max-height: none; overflow: visible;
+    padding: 18px 20px; box-shadow: none;
+  }
+  body.perform-mode #lyricsBox .line { display: none !important; padding: 6px 4px; }
+  body.perform-mode #lyricsBox .line.active { display: flex !important; }
+  body.perform-mode #lyricsBox .line.next-line { display: flex !important; opacity: 0.5; }
+  body.perform-mode #lyricsBox .line.next-line .text { font-size: 15px !important; font-weight: 400 !important; }
+
   #modeToggle {
     position: relative; z-index: 5;
     background: #1D2130; color: #C9A227; border: 1px solid #C9A227;
@@ -375,6 +393,7 @@
     els.forEach((el, i) => {
       el.classList.toggle('active', i === idx);
       el.classList.toggle('past', i < idx);
+      el.classList.toggle('next-line', i === idx + 1);
       if (i === idx && lines[i].wordTimes) {
         const wt = lines[i].wordTimes;
         let sungCount = 0;
@@ -388,7 +407,7 @@
         });
       }
     });
-    if (idx >= 0 && els[idx]) {
+    if (idx >= 0 && els[idx] && !document.body.classList.contains('perform-mode')) {
       els[idx].scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
   }
@@ -897,6 +916,29 @@
     const perform = document.body.classList.toggle('perform-mode');
     modeToggle.textContent = perform ? '編集画面に戻る' : '本番モードで歌う';
     window.scrollTo({ top: 0, behavior: 'instant' });
+
+    if (perform) {
+      // 本番モードに入ったら自動で再生と採点をスタート
+      if (player.src) {
+        player.currentTime = 0;
+        player.play().catch(() => {});
+      } else if (useTimerMode) {
+        timerOffset = 0;
+        timerCurrent = 0;
+        cancelAnimationFrame(rafId);
+        timerStart = performance.now();
+        timerPlaying = true;
+        playPauseBtn.textContent = '一時停止';
+        rafId = requestAnimationFrame(tick);
+      }
+      if (!scoring && referenceCurve) {
+        startScoring();
+      }
+    } else {
+      // 編集画面に戻る際は再生と採点を止める
+      if (player.src) player.pause();
+      if (scoring) stopScoring();
+    }
   });
 
   // ==================== 曲名・アーティスト名 ====================
