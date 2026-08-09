@@ -240,7 +240,10 @@
 
   <div id="finalScore" style="display:none; width:100%; max-width:640px; text-align:center; margin-bottom:20px; padding:24px; background:#12141d; border:1px solid #C9A227; border-radius:14px;">
     <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#8b8f9e; letter-spacing:.3em; margin-bottom:8px;">FINAL SCORE</div>
-    <div id="finalScoreNum" style="font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:48px; color:#F4EFE0;">--</div>
+    <div>
+      <span id="finalScoreNum" style="font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:48px; color:#F4EFE0;">--</span>
+      <span style="font-size:16px; color:#8b8f9e;"> / 100点</span>
+    </div>
   </div>
 
   <div class="error" id="errorMsg" style="display:none;"></div>
@@ -773,6 +776,12 @@
     updateActiveLine(player.currentTime);
   });
 
+  player.addEventListener('ended', () => {
+    if (scoring) {
+      stopScoring();
+    }
+  });
+
   function seekTo(t) {
     if (useTimerMode) {
       timerOffset = t;
@@ -861,6 +870,7 @@
   let scoreSamples = []; // 0-100 per frame
   let scoreRafId = null;
   let liveHz = 0;
+  let sungTrail = []; // {t, hz, ok} 歌った音程の軌跡(ハイウェイに残すため)
 
   const highway = document.getElementById('pitchHighway');
   const hctx = highway.getContext('2d');
@@ -972,7 +982,20 @@
     hctx.lineWidth = 1;
     hctx.beginPath(); hctx.moveTo(px, 0); hctx.lineTo(px, h); hctx.stroke();
 
-    // 自分の声(ライブピッチ)をプレイヘッド上に表示
+    // 歌った音程の軌跡(過去に発声した分もウィンドウ内なら残して表示)
+    if (sungTrail.length > 0) {
+      for (const s of sungTrail) {
+        if (s.t < winStart || s.t > winEnd) continue;
+        const x = (s.t - winStart) * pxPerSec;
+        const y = hzToY(s.hz, h);
+        hctx.fillStyle = s.ok ? 'rgba(224,138,122,0.85)' : 'rgba(224,138,122,0.35)';
+        hctx.beginPath();
+        hctx.arc(x, y, 2.5, 0, Math.PI * 2);
+        hctx.fill();
+      }
+    }
+
+    // 自分の声(ライブピッチ)をプレイヘッド上に強調表示
     if (scoring && liveHz > 0) {
       const y = hzToY(liveHz, h);
       hctx.fillStyle = '#e08a7a';
@@ -1062,6 +1085,7 @@
 
     scoring = true;
     scoreSamples = [];
+    sungTrail = [];
     scorePanel.style.display = 'block';
     finalScoreBox.style.display = 'none';
     scoreToggle.textContent = '採点ストップ';
@@ -1084,11 +1108,13 @@
         const frameScore = Math.max(0, 100 - Math.abs(cents));
         scoreSamples.push(frameScore);
         liveScoreEl.textContent = Math.round(frameScore);
+        sungTrail.push({ t, hz, ok: Math.abs(cents) < 50 });
       } else {
         liveHz = hz > 0 ? hz : 0;
         pitchMeter.style.width = '50%';
         pitchMeter.style.background = '#565b6e';
         liveScoreEl.textContent = '--';
+        if (hz > 0) sungTrail.push({ t, hz, ok: false });
       }
       scoreRafId = requestAnimationFrame(loop);
     }
