@@ -129,13 +129,13 @@
   body.perform-mode .rule { display: none !important; }
   body.perform-mode h1 { font-size: clamp(20px, 4vw, 26px); margin-bottom: 2px; }
   body.perform-mode #artistName { margin-bottom: 8px; }
-  body.perform-mode { padding-top: 16px; }
+  body.perform-mode { padding-top: 16px; padding-bottom: 100px; }
+  body.perform-mode #scorePanel { display: none !important; }
 
   /* 本番モードでの表示順: タイトル→音程バー→歌詞(現在+次の行)→再生/採点 */
   body.perform-mode #pitchHighway { order: 2; height: 170px !important; margin-top: 4px; }
   body.perform-mode #lyricsBox { order: 3; margin-top: 4px; }
   body.perform-mode audio#player { order: 4; }
-  body.perform-mode #scorePanel { order: 5; }
   body.perform-mode .error { order: 7; }
 
   /* 歌詞は「現在の行」と「次の行」だけを表示 */
@@ -153,6 +153,11 @@
     background: #1D2130; color: #C9A227; border: 1px solid #C9A227;
     border-radius: 999px; padding: 10px 20px; font-size: 13px; font-weight: 700;
     cursor: pointer; margin-bottom: 18px; display: inline-block;
+  }
+  body.perform-mode #modeToggle {
+    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+    z-index: 250; margin-bottom: 0;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
   }
 </style>
 </head>
