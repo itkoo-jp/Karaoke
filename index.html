@@ -123,15 +123,41 @@
     border-radius: 18px 18px 0 0 !important;
     box-shadow: 0 -10px 40px rgba(0,0,0,0.6);
   }
+
+  body.perform-mode .edit-only { display: none !important; }
+  body.perform-mode .eyebrow,
+  body.perform-mode .rule { display: none !important; }
+  body.perform-mode h1 { font-size: clamp(22px, 4vw, 30px); margin-bottom: 4px; }
+  body.perform-mode { padding-top: 18px; }
+  body.perform-mode #pitchHighway { height: 190px !important; }
+  body.perform-mode #lyricsBox { height: 40vh; }
+  #modeToggle {
+    position: relative; z-index: 5;
+    background: #1D2130; color: #C9A227; border: 1px solid #C9A227;
+    border-radius: 999px; padding: 10px 20px; font-size: 13px; font-weight: 700;
+    cursor: pointer; margin-bottom: 18px; display: inline-block;
+  }
 </style>
 </head>
 <body>
 
   <div class="eyebrow">PERSONAL KARAOKE STUDIO</div>
-  <h1>Sotto le Luci</h1>
+  <h1 id="songTitle">Sotto le Luci</h1>
+  <div id="artistName" style="text-align:center; color:#9295a3; font-size:14px; letter-spacing:.05em; margin-top:-8px; margin-bottom:14px;">Ultimo</div>
   <div class="rule"></div>
 
-  <div class="row">
+  <div class="row edit-only">
+    <input type="text" id="songTitleInput" placeholder="曲名" value="Sotto le Luci"
+      style="flex:1 1 200px; background:#1D2130; border:1px solid #2c3145; border-radius:10px; padding:12px 14px; font-size:14px; color:#EDE8DD;" />
+    <input type="text" id="artistNameInput" placeholder="アーティスト名" value="Ultimo"
+      style="flex:1 1 200px; background:#1D2130; border:1px solid #2c3145; border-radius:10px; padding:12px 14px; font-size:14px; color:#EDE8DD;" />
+  </div>
+
+  <div style="text-align:center;">
+    <div id="modeToggle">本番モードで歌う</div>
+  </div>
+
+  <div class="row edit-only">
     <label class="filebox">
       <span id="projectLoadLabel">プロジェクトファイルを読み込む(まとめて復元)</span>
       <span style="color:#C9A227; font-weight:600; white-space:nowrap;">開く</span>
@@ -140,7 +166,7 @@
     <div class="btn-secondary" id="projectSaveBtn">プロジェクトを保存</div>
   </div>
 
-  <div class="row">
+  <div class="row edit-only">
     <label class="filebox">
       <span id="audioLabel">音源ファイルを選択(伴奏)</span>
       <span style="color:#C9A227; font-weight:600; white-space:nowrap;">開く</span>
@@ -150,7 +176,7 @@
     <div class="btn-secondary" id="autoSplit">長い行を自動分割</div>
   </div>
 
-  <div class="row">
+  <div class="row edit-only">
     <label class="filebox">
       <span id="wordTimingLabel">単語タイムスタンプ(LRC)を選択</span>
       <span style="color:#C9A227; font-weight:600; white-space:nowrap;">開く</span>
@@ -158,18 +184,18 @@
     </label>
   </div>
 
-  <textarea id="lrcInput" style="display:none;">[00:00.00]ここに歌詞を貼り付けてください
+  <textarea id="lrcInput" class="edit-only" style="display:none;">[00:00.00]ここに歌詞を貼り付けてください
 [00:04.20]LRC形式: [分:秒]歌詞
 [00:08.50]上の「歌詞(LRC)を編集」から貼り付け・修正できます</textarea>
 
   <canvas id="pitchHighway" width="640" height="140" style="display:none; width:100%; max-width:640px; height:140px; background:#0c0e15; border:1px solid #262a3a; border-radius:14px; margin-bottom:14px;"></canvas>
 
-  <div class="row">
+  <div class="row edit-only">
     <div class="btn-secondary" id="tapSyncToggle">タップ同期で精度を上げる</div>
     <div class="btn-secondary" id="downloadLrc" style="display:none;">修正後LRCを保存</div>
   </div>
 
-  <div class="row" style="align-items:center;">
+  <div class="row edit-only" style="align-items:center;">
     <div style="flex:1 1 260px; font-size:12px; color:#8b8f9e; padding:0 4px;">全体のタイミングをずらす</div>
     <button id="shiftMinus100" class="ctrl" style="flex:0 0 auto;">−100ms</button>
     <button id="shiftMinus30" class="ctrl" style="flex:0 0 auto;">−30ms</button>
@@ -177,7 +203,7 @@
     <button id="shiftPlus100" class="ctrl" style="flex:0 0 auto;">+100ms</button>
   </div>
 
-  <div id="tapSyncPanel" style="display:none; width:100%; max-width:640px; margin-bottom:20px;">
+  <div id="tapSyncPanel" class="edit-only" style="display:none; width:100%; max-width:640px; margin-bottom:20px;">
     <div style="background:#12141d; border:1px solid #C9A227; border-radius:14px; padding:20px; text-align:center;">
       <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#8b8f9e; letter-spacing:.2em; margin-bottom:10px;">TAP SYNC</div>
       <div id="tapNextWord" style="font-family:'Playfair Display',serif; font-size:28px; font-weight:700; color:#F4EFE0; margin-bottom:6px;">-</div>
@@ -198,11 +224,11 @@
   <div id="lyricsBox"></div>
 
   <audio id="player" controls style="display:none;"></audio>
-  <div style="text-align:center; margin-bottom:20px;">
+  <div class="edit-only" style="text-align:center; margin-bottom:20px;">
     <span class="link-btn" id="toggleTimerMode">代わりにタイマーで進める</span>
   </div>
 
-  <div class="timer-wrap" id="timerControls" style="display:none;">
+  <div class="timer-wrap edit-only" id="timerControls" style="display:none;">
     <div class="clock" id="clock">0:00</div>
     <div class="controls">
       <button class="ctrl" id="back5">−5s</button>
@@ -214,15 +240,18 @@
     </div>
   </div>
 
-  <div class="hint">歌詞の行をタップすると、その時間にジャンプできます</div>
+  <div class="hint edit-only">歌詞の行をタップすると、その時間にジャンプできます</div>
 
-  <div class="row" style="margin-top:20px;">
+  <div class="row edit-only" style="margin-top:20px;">
     <label class="filebox">
       <span id="pitchLabel">お手本データ(pitch_reference.json)を選択</span>
       <span style="color:#C9A227; font-weight:600; white-space:nowrap;">開く</span>
       <input type="file" id="pitchInput" />
     </label>
-    <div class="btn-secondary" id="scoreToggle">採点スタート</div>
+  </div>
+
+  <div class="row" style="justify-content:center;">
+    <div class="btn-secondary" id="scoreToggle" style="flex:0 0 auto; font-size:15px; padding:14px 32px;">採点スタート</div>
   </div>
 
   <div id="scorePanel" style="display:none; width:100%; max-width:640px; margin-bottom:20px;">
@@ -608,6 +637,8 @@
   projectSaveBtn.addEventListener('click', () => {
     const finish = (audioDataUrl) => {
       const project = {
+        songTitle: songTitleInput.value,
+        artistName: artistNameInput.value,
         audioName: audioFileRef ? audioFileRef.name : null,
         audioDataUrl: audioDataUrl,
         lrcText: lrcInput.value,
@@ -641,6 +672,15 @@
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result);
+
+        if (typeof data.songTitle === 'string' && data.songTitle) {
+          songTitleInput.value = data.songTitle;
+          songTitleEl.textContent = data.songTitle;
+        }
+        if (typeof data.artistName === 'string') {
+          artistNameInput.value = data.artistName;
+          artistNameEl.textContent = data.artistName;
+        }
 
         if (data.audioDataUrl) {
           player.src = data.audioDataUrl;
@@ -850,6 +890,26 @@
   });
 
   timerControls.style.display = 'none';
+
+  // ==================== モード切り替え ====================
+  const modeToggle = document.getElementById('modeToggle');
+  modeToggle.addEventListener('click', () => {
+    const perform = document.body.classList.toggle('perform-mode');
+    modeToggle.textContent = perform ? '編集画面に戻る' : '本番モードで歌う';
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  });
+
+  // ==================== 曲名・アーティスト名 ====================
+  const songTitleEl = document.getElementById('songTitle');
+  const artistNameEl = document.getElementById('artistName');
+  const songTitleInput = document.getElementById('songTitleInput');
+  const artistNameInput = document.getElementById('artistNameInput');
+  songTitleInput.addEventListener('input', () => {
+    songTitleEl.textContent = songTitleInput.value || 'タイトル未設定';
+  });
+  artistNameInput.addEventListener('input', () => {
+    artistNameEl.textContent = artistNameInput.value || '';
+  });
 
   // ==================== 採点機能 ====================
   const pitchInput = document.getElementById('pitchInput');
