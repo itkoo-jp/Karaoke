@@ -734,6 +734,7 @@
         if (data.pitchJson) {
           referenceCurve = data.pitchJson;
           referenceNotes = buildNotes(referenceCurve);
+          fitHzRangeToCurve(referenceCurve);
           pitchLabel.textContent = 'ピッチデータ(プロジェクトから復元)';
           highway.style.display = 'block';
           startHighwayLoop();
@@ -1020,6 +1021,7 @@
       try {
         referenceCurve = JSON.parse(reader.result);
         referenceNotes = buildNotes(referenceCurve);
+        fitHzRangeToCurve(referenceCurve);
         errorMsg.style.display = 'none';
         highway.style.display = 'block';
         startHighwayLoop();
@@ -1031,11 +1033,22 @@
     reader.readAsText(file);
   });
 
-  const HZ_MIN = 80, HZ_MAX = 500; // 表示するピッチ範囲(log scale)
+  let HZ_MIN = 80, HZ_MAX = 500; // 表示するピッチ範囲(log scale) 曲の音域に合わせて自動調整される
   function hzToY(hz, h) {
     const lo = Math.log2(HZ_MIN), hi = Math.log2(HZ_MAX);
     const v = Math.max(lo, Math.min(hi, Math.log2(hz)));
     return h - ((v - lo) / (hi - lo)) * h;
+  }
+
+  // 曲で実際に使われている音域だけに絞り込み、1レーンの幅を広くしてDAM風に見やすくする
+  function fitHzRangeToCurve(curve) {
+    const hzs = curve.filter(p => p.hz).map(p => p.hz);
+    if (hzs.length === 0) return;
+    const minHz = Math.min(...hzs);
+    const maxHz = Math.max(...hzs);
+    // 上下に2半音分の余白を持たせる
+    HZ_MIN = minHz * Math.pow(2, -2 / 12);
+    HZ_MAX = maxHz * Math.pow(2, 2 / 12);
   }
 
   // DAMのような判定レーンにするため、周波数を半音(セミトーン)単位にスナップする
