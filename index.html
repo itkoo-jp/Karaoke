@@ -997,10 +997,10 @@
     // 無音判定を挟んでも、半音レーンが同じで間隔が短ければ同じ音として繋げる
     // (DAMのように、こまごまとした断片ではなく、まとまった長いバーにするため)
     const GAP_TOL = 0.24; // これ以下の途切れは同じ音とみなす(秒)
-    const MIN_NOTE_LEN = 0.04; // これより短い音符はノイズとして除去(秒)
+    const MERGE_SHORT = 0.18; // これより短い断片は、削除せず近い方の隣のノートに吸収する(秒)
 
     const voiced = curve.filter(p => p.hz);
-    const notes = [];
+    let notes = [];
     let cur = null;
     for (const p of voiced) {
       const midi = Math.round(69 + 12 * Math.log2(p.hz / 440));
@@ -1013,7 +1013,37 @@
     }
     if (cur) notes.push(cur);
 
-    return notes.filter(n => (n.end - n.start) >= MIN_NOTE_LEN);
+    // 短い断片は消さずに、時間的に近い方の隣のノートへ吸収してつなげる
+    let changed = true;
+    let safety = 0;
+    while (changed && safety < notes.length * 3 + 10) {
+      changed = false;
+      safety++;
+      for (let i = 0; i < notes.length; i++) {
+        const dur = notes[i].end - notes[i].start;
+        if (dur >= MERGE_SHORT || notes.length <= 1) continue;
+        const prev = notes[i - 1];
+        const next = notes[i + 1];
+        const gapPrev = prev ? notes[i].start - prev.end : Infinity;
+        const gapNext = next ? next.start - notes[i].end : Infinity;
+        if (prev && gapPrev <= gapNext) {
+          prev.end = notes[i].end;
+          notes.splice(i, 1);
+        } else if (next) {
+          next.start = notes[i].start;
+          notes.splice(i, 1);
+        } else if (prev) {
+          prev.end = notes[i].end;
+          notes.splice(i, 1);
+        } else {
+          continue;
+        }
+        changed = true;
+        break;
+      }
+    }
+
+    return notes;
   }
 
   pitchInput.addEventListener('change', (e) => {
