@@ -127,28 +127,41 @@
   body.perform-mode .edit-only { display: none !important; }
   body.perform-mode .eyebrow,
   body.perform-mode .rule { display: none !important; }
-  body.perform-mode h1 { font-size: clamp(20px, 4vw, 26px); margin-bottom: 2px; }
-  body.perform-mode #artistName { margin-bottom: 8px; }
-  body.perform-mode { padding-top: 16px; padding-bottom: 100px; }
+  body.perform-mode { padding-top: 14px; padding-bottom: 64px; }
   body.perform-mode #scorePanel { display: none !important; }
-  body.perform-mode h1 { font-size: clamp(30px, 7vw, 42px) !important; margin-bottom: 6px; }
-  body.perform-mode #artistName { font-size: 19px !important; margin-bottom: 16px !important; color: #c7cad6 !important; }
-  body.perform-mode #scoreToggleRow { order: 6; margin-bottom: 8px; }
+  body.perform-mode h1 { font-size: clamp(26px, 6vw, 36px) !important; margin-bottom: 4px; }
+  body.perform-mode #artistName { font-size: 17px !important; margin-bottom: 10px !important; color: #c7cad6 !important; }
+  body.perform-mode #scoreToggleRow { order: 6; margin-bottom: 4px; }
   body.perform-mode #scoreToggle {
-    font-size: 12px !important; padding: 7px 16px !important;
-    opacity: 0.8;
+    font-size: 11px !important; padding: 5px 14px !important;
+    opacity: 0.75;
   }
 
-  /* 本番モードでの表示順: タイトル→音程バー→歌詞(現在+次の行)→再生/採点 */
-  body.perform-mode #pitchHighway { order: 2; height: 170px !important; margin-top: 4px; }
-  body.perform-mode #lyricsBox { order: 3; margin-top: 4px; }
-  body.perform-mode audio#player { order: 4; }
+  /* 本番モードでの表示順: タイトル→(音程バー+歌詞を1枚にまとめたステージ)→再生/採点 */
+  body.perform-mode #performStage {
+    order: 2;
+    width: calc(100% + 32px);
+    margin-left: -16px; margin-right: -16px; margin-top: 4px;
+    background: #0c0e15;
+    border-top: 1px solid #262a3a; border-bottom: 1px solid #262a3a;
+  }
+  body.perform-mode audio#player { order: 4; margin-top: 10px; }
   body.perform-mode .error { order: 7; }
 
-  /* 歌詞は「現在の行」と「次の行」だけを表示 */
+  body.perform-mode #pitchHighway {
+    display: block !important;
+    width: 100% !important; max-width: none !important;
+    height: 210px !important; margin-bottom: 0 !important;
+    border: none !important; border-radius: 0 !important;
+  }
+
+  /* 歌詞は「現在の行」と「次の行」だけを、音程バーの下に直接表示 */
   body.perform-mode #lyricsBox {
     height: auto; max-height: none; overflow: visible;
-    padding: 18px 20px; box-shadow: none;
+    width: 100%; max-width: none;
+    padding: 14px 18px 18px; box-shadow: none;
+    border: none !important; border-radius: 0 !important;
+    background: transparent !important; margin-bottom: 0 !important;
   }
   body.perform-mode #lyricsBox .line { display: none !important; padding: 6px 4px; }
   body.perform-mode #lyricsBox .line.active { display: flex !important; }
@@ -162,8 +175,9 @@
     cursor: pointer; margin-bottom: 18px; display: inline-block;
   }
   body.perform-mode #modeToggle {
-    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+    position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%);
     z-index: 250; margin-bottom: 0;
+    padding: 6px 16px; font-size: 11px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
   }
 </style>
@@ -217,7 +231,11 @@
 [00:04.20]LRC形式: [分:秒]歌詞
 [00:08.50]上の「歌詞(LRC)を編集」から貼り付け・修正できます</textarea>
 
-  <canvas id="pitchHighway" width="640" height="140" style="display:none; width:100%; max-width:640px; height:140px; background:#0c0e15; border:1px solid #262a3a; border-radius:14px; margin-bottom:14px;"></canvas>
+  <div id="performStage">
+    <canvas id="pitchHighway" width="640" height="140" style="display:none; width:100%; max-width:640px; height:140px; background:#0c0e15; border:1px solid #262a3a; border-radius:14px; margin-bottom:14px;"></canvas>
+
+    <div id="lyricsBox"></div>
+  </div>
 
   <div class="row edit-only">
     <div class="btn-secondary" id="tapSyncToggle">タップ同期で精度を上げる</div>
@@ -249,8 +267,6 @@
       </div>
     </div>
   </div>
-
-  <div id="lyricsBox"></div>
 
   <audio id="player" controls style="display:none;"></audio>
   <div class="edit-only" style="text-align:center; margin-bottom:20px;">
@@ -932,6 +948,9 @@
     modeToggle.textContent = perform ? '編集画面に戻る' : '本番モードで歌う';
     window.scrollTo({ top: 0, behavior: 'instant' });
 
+    // レイアウトが変わってcanvasの実サイズが変わるため、少し待ってから再計算する
+    setTimeout(() => { if (referenceNotes) startHighwayLoop(); }, 50);
+
     if (perform) {
       // 本番モードに入ったら自動で再生と採点をスタート
       if (player.src) {
@@ -1013,7 +1032,9 @@
     }
     if (cur) notes.push(cur);
 
-    // 短い断片は消さずに、時間的に近い方の隣のノートへ吸収してつなげる
+    // 短い断片は消さずに、音程が近い(3半音以内)隣のノートへ吸収してつなげる。
+    // 明らかに音程が違う場合は、短くても別の音として残す。
+    const PITCH_MERGE_TOL = 3; // 半音
     let changed = true;
     let safety = 0;
     while (changed && safety < notes.length * 3 + 10) {
@@ -1024,16 +1045,17 @@
         if (dur >= MERGE_SHORT || notes.length <= 1) continue;
         const prev = notes[i - 1];
         const next = notes[i + 1];
-        const gapPrev = prev ? notes[i].start - prev.end : Infinity;
-        const gapNext = next ? next.start - notes[i].end : Infinity;
-        if (prev && gapPrev <= gapNext) {
+        const prevClose = prev && Math.abs(notes[i].midi - prev.midi) <= PITCH_MERGE_TOL;
+        const nextClose = next && Math.abs(notes[i].midi - next.midi) <= PITCH_MERGE_TOL;
+        if (!prevClose && !nextClose) continue; // 近い音がなければ短くてもそのまま残す
+
+        const gapPrev = prevClose ? notes[i].start - prev.end : Infinity;
+        const gapNext = nextClose ? next.start - notes[i].end : Infinity;
+        if (prevClose && gapPrev <= gapNext) {
           prev.end = notes[i].end;
           notes.splice(i, 1);
-        } else if (next) {
+        } else if (nextClose) {
           next.start = notes[i].start;
-          notes.splice(i, 1);
-        } else if (prev) {
-          prev.end = notes[i].end;
           notes.splice(i, 1);
         } else {
           continue;
