@@ -996,8 +996,8 @@
   function buildNotes(curve) {
     // 無音判定を挟んでも、半音レーンが同じで間隔が短ければ同じ音として繋げる
     // (DAMのように、こまごまとした断片ではなく、まとまった長いバーにするため)
-    const GAP_TOL = 0.16; // これ以下の途切れは同じ音とみなす(秒)
-    const MIN_NOTE_LEN = 0.05; // これより短い音符はノイズとして除去(秒)
+    const GAP_TOL = 0.24; // これ以下の途切れは同じ音とみなす(秒)
+    const MIN_NOTE_LEN = 0.04; // これより短い音符はノイズとして除去(秒)
 
     const voiced = curve.filter(p => p.hz);
     const notes = [];
