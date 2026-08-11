@@ -1034,6 +1034,7 @@
 
   // 表現力(しゃくり・ビブラート)検出用
   let centsHistory = []; // [{t, cents}] 直近の音程ズレの履歴
+  let expressionEvents = []; // {t, hz, type} しゃくり・ビブラートを検出した箇所(ハイウェイ表示用)
   let scoopCount = 0;
   let farBelowSince = null; // 大きく下から入っている状態の開始時刻
   let vibratoCount = 0;
@@ -1234,6 +1235,26 @@
       }
     }
 
+    // しゃくり・ビブラートを検出した箇所にアイコンを表示
+    if (expressionEvents.length > 0) {
+      hctx.font = 'bold 11px "IBM Plex Mono", monospace';
+      hctx.textAlign = 'center';
+      for (const ev of expressionEvents) {
+        if (ev.t < winStart || ev.t > winEnd) continue;
+        const x = (ev.t - winStart) * pxPerSec;
+        const y = hzToY(quantizeToSemitone(ev.hz), h);
+        const label = ev.type === 'scoop' ? 'し' : 'V';
+        const color = ev.type === 'scoop' ? '#7ec4e8' : '#e0a8f0';
+        hctx.fillStyle = color;
+        hctx.beginPath();
+        hctx.arc(x, y - 16, 8, 0, Math.PI * 2);
+        hctx.fill();
+        hctx.fillStyle = '#0c0e15';
+        hctx.fillText(label, x, y - 12);
+      }
+      hctx.textAlign = 'start';
+    }
+
     // 自分の声(ライブピッチ)をプレイヘッド上に強調表示(半音レーンにスナップ)
     if (scoring && liveHz > 0) {
       const y = hzToY(quantizeToSemitone(liveHz), h);
@@ -1304,13 +1325,14 @@
   }
 
   // しゃくり(下から音程を滑らせて入る)を検出する
-  function detectScoop(t, cents) {
+  function detectScoop(t, cents, hz) {
     if (cents < -150) {
       if (farBelowSince === null) farBelowSince = t;
     } else if (cents > -40 && cents < 60) {
       if (farBelowSince !== null && (t - farBelowSince) < 0.45) {
         scoopCount++;
         scoopCountEl.textContent = scoopCount;
+        expressionEvents.push({ t, hz, type: 'scoop' });
       }
       farBelowSince = null;
     }
@@ -1319,7 +1341,7 @@
   }
 
   // ビブラート(音程の規則的な揺れ)を検出する
-  function detectVibrato(t, cents) {
+  function detectVibrato(t, cents, hz) {
     centsHistory.push({ t, cents });
     while (centsHistory.length > 0 && t - centsHistory[0].t > 0.5) centsHistory.shift();
     if (centsHistory.length < 8) { vibratoActive = false; return; }
@@ -1340,6 +1362,7 @@
       vibratoCount++;
       vibratoCountEl.textContent = vibratoCount;
       vibratoCooldownUntil = t + 0.4; // 同じ揺れを連続でカウントしない
+      expressionEvents.push({ t, hz, type: 'vibrato' });
     }
     vibratoActive = isVibrato;
   }
@@ -1367,6 +1390,7 @@
     scoreSamples = [];
     sungTrail = [];
     centsHistory = [];
+    expressionEvents = [];
     scoopCount = 0;
     farBelowSince = null;
     vibratoCount = 0;
@@ -1397,8 +1421,8 @@
         scoreSamples.push(frameScore);
         liveScoreEl.textContent = Math.round(frameScore);
         sungTrail.push({ t, hz, ok: Math.abs(cents) < 50 });
-        detectScoop(t, cents);
-        detectVibrato(t, cents);
+        detectScoop(t, cents, hz);
+        detectVibrato(t, cents, hz);
       } else {
         liveHz = hz > 0 ? hz : 0;
         pitchMeter.style.width = '50%';
