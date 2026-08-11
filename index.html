@@ -311,11 +311,11 @@
       <div style="text-align:center; margin-top:6px; font-size:11px; color:#565b6e;">左＝低い　右＝高い（中央に近いほど高得点）</div>
       <div style="display:flex; justify-content:center; gap:24px; margin-top:14px; padding-top:12px; border-top:1px solid #262a3a;">
         <div style="text-align:center;">
-          <div style="font-size:10px; color:#8b8f9e; letter-spacing:.1em;">しゃくり</div>
+          <div style="font-size:10px; color:#8b8f9e; letter-spacing:.1em;">Portamento</div>
           <div id="scoopCountEl" style="font-family:'IBM Plex Mono',monospace; font-size:16px; color:#C9A227;">0</div>
         </div>
         <div style="text-align:center;">
-          <div style="font-size:10px; color:#8b8f9e; letter-spacing:.1em;">ビブラート</div>
+          <div style="font-size:10px; color:#8b8f9e; letter-spacing:.1em;">Vibrato</div>
           <div id="vibratoCountEl" style="font-family:'IBM Plex Mono',monospace; font-size:16px; color:#C9A227;">0</div>
         </div>
       </div>
@@ -329,14 +329,18 @@
         <span id="finalScoreNum" style="font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:76px; color:#F4EFE0; text-shadow:0 0 30px rgba(201,162,39,0.4);">--</span>
       </div>
       <div style="font-size:16px; color:#8b8f9e; margin-top:2px; margin-bottom:20px;">/ 100点</div>
-      <div style="display:flex; justify-content:center; gap:28px; margin-bottom:28px; padding-top:16px; border-top:1px solid #2c3145;">
+      <div style="display:flex; justify-content:center; gap:20px; margin-bottom:28px; padding-top:16px; border-top:1px solid #2c3145;">
         <div style="text-align:center;">
-          <div style="font-size:10px; color:#8b8f9e; letter-spacing:.1em;">しゃくり</div>
+          <div style="font-size:10px; color:#8b8f9e; letter-spacing:.1em;">Portamento</div>
           <div id="finalScoopCount" style="font-family:'IBM Plex Mono',monospace; font-size:20px; color:#c7cad6;">0</div>
         </div>
         <div style="text-align:center;">
-          <div style="font-size:10px; color:#8b8f9e; letter-spacing:.1em;">ビブラート</div>
+          <div style="font-size:10px; color:#8b8f9e; letter-spacing:.1em;">Vibrato</div>
           <div id="finalVibratoCount" style="font-family:'IBM Plex Mono',monospace; font-size:20px; color:#c7cad6;">0</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:10px; color:#8b8f9e; letter-spacing:.1em;">Espressione</div>
+          <div id="finalDynamicsRange" style="font-family:'IBM Plex Mono',monospace; font-size:20px; color:#c7cad6;">--</div>
         </div>
       </div>
       <button id="closeFinalScore" style="background:#C9A227; color:#14171f; border:none; border-radius:999px; padding:14px 40px; font-size:15px; font-weight:700; cursor:pointer; touch-action:manipulation;">閉じる</button>
@@ -1020,6 +1024,7 @@
   const vibratoCountEl = document.getElementById('vibratoCountEl');
   const finalScoopCount = document.getElementById('finalScoopCount');
   const finalVibratoCount = document.getElementById('finalVibratoCount');
+  const finalDynamicsRange = document.getElementById('finalDynamicsRange');
 
   let referenceCurve = null; // [{t, hz}]
   let referenceNotes = null; // [{start,end,hz}] 連続音をまとめたノート
@@ -1040,6 +1045,7 @@
   let vibratoCount = 0;
   let vibratoActive = false;
   let vibratoCooldownUntil = 0;
+  let loudnessHistory = []; // dB値のログ(曲全体の抑揚を評価するため)
 
   const highway = document.getElementById('pitchHighway');
   const hctx = highway.getContext('2d');
@@ -1243,7 +1249,7 @@
         if (ev.t < winStart || ev.t > winEnd) continue;
         const x = (ev.t - winStart) * pxPerSec;
         const y = hzToY(quantizeToSemitone(ev.hz), h);
-        const label = ev.type === 'scoop' ? 'し' : 'V';
+        const label = ev.type === 'scoop' ? 'P' : 'V';
         const color = ev.type === 'scoop' ? '#7ec4e8' : '#e0a8f0';
         hctx.fillStyle = color;
         hctx.beginPath();
@@ -1296,6 +1302,12 @@
   }
 
   // 自己相関法によるシンプルなピッチ検出
+  function computeRMS(buf) {
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+    return Math.sqrt(sum / buf.length);
+  }
+
   function autoCorrelate(buf, sampleRate) {
     const SIZE = buf.length;
     let rms = 0;
@@ -1391,6 +1403,7 @@
     sungTrail = [];
     centsHistory = [];
     expressionEvents = [];
+    loudnessHistory = [];
     scoopCount = 0;
     farBelowSince = null;
     vibratoCount = 0;
@@ -1423,6 +1436,10 @@
         sungTrail.push({ t, hz, ok: Math.abs(cents) < 50 });
         detectScoop(t, cents, hz);
         detectVibrato(t, cents, hz);
+
+        const rms = computeRMS(buf);
+        const db = 20 * Math.log10(Math.max(rms, 0.0001));
+        loudnessHistory.push(db);
       } else {
         liveHz = hz > 0 ? hz : 0;
         pitchMeter.style.width = '50%';
@@ -1433,6 +1450,17 @@
       scoreRafId = requestAnimationFrame(loop);
     }
     loop();
+  }
+
+  function computeDynamicsBonus(history) {
+    if (history.length < 20) return { bonus: 0, range: 0 };
+    const sorted = [...history].sort((a, b) => a - b);
+    const p10 = sorted[Math.floor(sorted.length * 0.1)];
+    const p90 = sorted[Math.floor(sorted.length * 0.9)];
+    const range = p90 - p10; // dB
+    // 目安: 4dB未満はほぼ一定音量、16dB以上あれば十分な強弱がついていると判断
+    const bonus = Math.max(0, Math.min(2, (range - 4) / 6));
+    return { bonus, range };
   }
 
   function stopScoring() {
@@ -1446,11 +1474,13 @@
 
     if (scoreSamples.length > 0) {
       const avg = scoreSamples.reduce((a, b) => a + b, 0) / scoreSamples.length;
-      const expressionBonus = Math.min(3, scoopCount * 0.5) + Math.min(3, vibratoCount * 0.5);
+      const { bonus: dynamicsBonus, range: dynamicsRange } = computeDynamicsBonus(loudnessHistory);
+      const expressionBonus = Math.min(3, scoopCount * 0.5) + Math.min(3, vibratoCount * 0.5) + dynamicsBonus;
       const total = Math.min(100, avg + expressionBonus);
       finalScoreNum.textContent = total.toFixed(1);
       finalScoopCount.textContent = scoopCount;
       finalVibratoCount.textContent = vibratoCount;
+      finalDynamicsRange.textContent = dynamicsRange.toFixed(1) + 'dB';
       window.scrollTo(0, 0);
       finalScoreBox.style.display = 'flex';
     }
