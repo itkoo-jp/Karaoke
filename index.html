@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Sotto le Luci - Personal Karaoke</title>
+<title>Personal Karaoke Studio</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
@@ -192,14 +192,14 @@
 <body>
 
   <div class="eyebrow">PERSONAL KARAOKE STUDIO</div>
-  <h1 id="songTitle">Sotto le Luci</h1>
-  <div id="artistName" style="text-align:center; color:#9295a3; font-size:14px; letter-spacing:.05em; margin-top:-8px; margin-bottom:14px;">Ultimo</div>
+  <h1 id="songTitle">曲名未設定</h1>
+  <div id="artistName" style="text-align:center; color:#9295a3; font-size:14px; letter-spacing:.05em; margin-top:-8px; margin-bottom:14px;"></div>
   <div class="rule"></div>
 
   <div class="row edit-only">
-    <input type="text" id="songTitleInput" placeholder="曲名" value="Sotto le Luci"
+    <input type="text" id="songTitleInput" placeholder="曲名" value=""
       style="flex:1 1 200px; background:#1D2130; border:1px solid #2c3145; border-radius:10px; padding:12px 14px; font-size:14px; color:#EDE8DD;" />
-    <input type="text" id="artistNameInput" placeholder="アーティスト名" value="Ultimo"
+    <input type="text" id="artistNameInput" placeholder="アーティスト名" value=""
       style="flex:1 1 200px; background:#1D2130; border:1px solid #2c3145; border-radius:10px; padding:12px 14px; font-size:14px; color:#EDE8DD;" />
   </div>
 
@@ -2014,60 +2014,150 @@
   });
 
   // ==================== シェア用スコアカード ====================
+  function drawStar(ctx, x, y, r, color, alpha) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const a = (Math.PI / 2) * i;
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(a - 0.2) * r, y + Math.sin(a - 0.2) * r);
+      ctx.lineTo(x + Math.cos(a) * r * 2.2, y + Math.sin(a) * r * 2.2);
+      ctx.lineTo(x + Math.cos(a + 0.2) * r, y + Math.sin(a + 0.2) * r);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawLaurelBranch(ctx, cx, cy, mirror) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    if (mirror) ctx.scale(-1, 1);
+    ctx.strokeStyle = 'rgba(201,162,39,0.85)';
+    ctx.fillStyle = 'rgba(201,162,39,0.85)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(60, -30, 110, -10);
+    ctx.stroke();
+    for (let i = 0; i < 5; i++) {
+      const t = i / 4;
+      const lx = 10 + t * 95;
+      const ly = -3 - t * 12;
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.rotate(-0.5 - t * 0.3);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 14, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   function drawShareCard(data) {
     const cv = document.createElement('canvas');
     cv.width = 1080; cv.height = 1350;
     const ctx = cv.getContext('2d');
 
-    const grad = ctx.createRadialGradient(540, 200, 100, 540, 700, 900);
-    grad.addColorStop(0, '#1c2136');
-    grad.addColorStop(0.55, '#14171f');
-    grad.addColorStop(1, '#0c0e15');
+    const grad = ctx.createRadialGradient(540, 180, 80, 540, 720, 950);
+    grad.addColorStop(0, '#22273e');
+    grad.addColorStop(0.5, '#161a26');
+    grad.addColorStop(1, '#0a0c12');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, cv.width, cv.height);
 
-    ctx.strokeStyle = 'rgba(201,162,39,0.5)';
+    // 散りばめた星の煌めき
+    const starSeeds = [
+      [90,120],[980,150],[140,900],[960,880],[70,600],[1010,540],
+      [200,1150],[880,1180],[60,300],[1000,320],[500,60],[300,1250],[780,1260],
+    ];
+    starSeeds.forEach(([x, y], i) => drawStar(ctx, x, y, 3 + (i % 3) * 1.5, '#C9A227', 0.35 + (i % 4) * 0.1));
+
+    // 二重の縁取り
+    ctx.strokeStyle = 'rgba(201,162,39,0.55)';
     ctx.lineWidth = 3;
     ctx.strokeRect(30, 30, cv.width - 60, cv.height - 60);
+    ctx.strokeStyle = 'rgba(201,162,39,0.25)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(44, 44, cv.width - 88, cv.height - 88);
+
+    // 四隅の装飾
+    [[30, 30], [cv.width - 30, 30], [30, cv.height - 30], [cv.width - 30, cv.height - 30]].forEach(([x, y]) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.fillStyle = '#C9A227';
+      ctx.beginPath();
+      ctx.moveTo(0, -12); ctx.lineTo(12, 0); ctx.lineTo(0, 12); ctx.lineTo(-12, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    });
 
     ctx.textAlign = 'center';
     ctx.fillStyle = '#8b8f9e';
-    ctx.font = '28px "IBM Plex Mono", monospace';
-    ctx.fillText('PERSONAL KARAOKE STUDIO', 540, 150);
+    ctx.font = '26px "IBM Plex Mono", monospace';
+    ctx.fillText('✦ PERSONAL KARAOKE STUDIO ✦', 540, 140);
 
     ctx.fillStyle = '#F4EFE0';
-    ctx.font = 'italic 700 64px "Playfair Display", serif';
-    wrapText(ctx, data.songTitle, 540, 250, 900, 70);
+    ctx.font = 'italic 700 62px "Playfair Display", serif';
+    wrapText(ctx, data.songTitle, 540, 245, 900, 68);
 
     ctx.fillStyle = '#c7cad6';
-    ctx.font = '32px "Work Sans", sans-serif';
-    ctx.fillText(data.artistName, 540, 340);
+    ctx.font = '30px "Work Sans", sans-serif';
+    ctx.fillText(data.artistName, 540, 335);
+
+    // タイトル下の装飾線
+    ctx.strokeStyle = 'rgba(201,162,39,0.7)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(440, 365); ctx.lineTo(500, 365);
+    ctx.moveTo(580, 365); ctx.lineTo(640, 365);
+    ctx.stroke();
+    ctx.beginPath(); ctx.arc(540, 365, 4, 0, Math.PI * 2); ctx.fillStyle = '#C9A227'; ctx.fill();
 
     ctx.fillStyle = '#C9A227';
-    ctx.font = 'italic 700 220px "Playfair Display", serif';
-    ctx.shadowColor = 'rgba(201,162,39,0.6)';
-    ctx.shadowBlur = 40;
+    ctx.font = 'italic 700 210px "Playfair Display", serif';
+    ctx.shadowColor = 'rgba(201,162,39,0.7)';
+    ctx.shadowBlur = 50;
     ctx.fillText(data.total.toFixed(1), 540, 700);
     ctx.shadowBlur = 0;
 
     ctx.fillStyle = '#8b8f9e';
-    ctx.font = '30px "IBM Plex Mono", monospace';
-    ctx.fillText('/ 100', 540, 760);
+    ctx.font = '28px "IBM Plex Mono", monospace';
+    ctx.fillText('/ 100', 540, 755);
+
+    // 月桂樹の装飾(称号を挟む)
+    drawLaurelBranch(ctx, 340, 850, false);
+    drawLaurelBranch(ctx, 740, 850, true);
 
     ctx.fillStyle = '#F4EFE0';
     ctx.font = 'italic 700 46px "Playfair Display", serif';
-    ctx.fillText(data.rank, 540, 850);
+    ctx.fillText(data.rank, 540, 862);
 
     const stats = [
       ['Portamento', data.scoopCount],
       ['Vibrato', data.vibratoCount],
       ['Max Combo', data.maxCombo],
     ];
-    const statY = 1000;
+    const statY = 1010;
     const spacing = 300;
     const startX = 540 - spacing;
+    ctx.strokeStyle = 'rgba(201,162,39,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(startX - 120, statY - 55); ctx.lineTo(startX + spacing * 2 + 120, statY - 55);
+    ctx.stroke();
     stats.forEach((s, i) => {
       const x = startX + i * spacing;
+      if (i > 0) {
+        ctx.beginPath();
+        ctx.moveTo(x - spacing / 2, statY - 30);
+        ctx.lineTo(x - spacing / 2, statY + 30);
+        ctx.stroke();
+      }
       ctx.fillStyle = '#8b8f9e';
       ctx.font = '22px "IBM Plex Mono", monospace';
       ctx.fillText(s[0], x, statY);
@@ -2078,7 +2168,7 @@
 
     ctx.fillStyle = '#565b6e';
     ctx.font = '22px "Work Sans", sans-serif';
-    ctx.fillText('Sotto le Luci — Personal Karaoke', 540, 1280);
+    ctx.fillText('✦ Personal Karaoke Studio ✦', 540, 1280);
 
     return cv;
   }
@@ -2117,10 +2207,12 @@
       const a = document.createElement('a');
       a.href = url;
       a.download = 'karaoke-score.png';
+      a.target = '_blank';
+      a.rel = 'noopener';
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
     }, 'image/png');
   });
 
