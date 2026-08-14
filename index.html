@@ -228,90 +228,97 @@
     </div>
   </div>
 
-  <div class="row edit-only">
-    <label class="filebox">
-      <span id="audioLabel">音源ファイルを選択(伴奏)</span>
-      <span style="color:#C9A227; font-weight:600; white-space:nowrap;">開く</span>
-      <input type="file" id="audioInput" />
-    </label>
-    <div class="btn-secondary" id="toggleEdit">歌詞(LRC)を編集</div>
-    <div class="btn-secondary" id="autoSplit">長い行を自動分割</div>
-  </div>
-
-  <div class="row edit-only">
-    <label class="filebox">
-      <span id="wordTimingLabel">単語タイムスタンプ(LRC)を選択</span>
-      <span style="color:#C9A227; font-weight:600; white-space:nowrap;">開く</span>
-      <input type="file" id="wordTimingInput" />
-    </label>
-  </div>
-
-  <textarea id="lrcInput" class="edit-only" style="display:none;">[00:00.00]ここに歌詞を貼り付けてください
-[00:04.20]LRC形式: [分:秒]歌詞
-[00:08.50]上の「歌詞(LRC)を編集」から貼り付け・修正できます</textarea>
-
   <div id="performStage">
     <canvas id="pitchHighway" width="640" height="140" style="display:none; width:100%; max-width:640px; height:140px; background:#0c0e15; border:1px solid #262a3a; border-radius:14px; margin-bottom:14px;"></canvas>
 
     <div id="lyricsBox"></div>
   </div>
 
-  <div class="row edit-only">
-    <div class="btn-secondary" id="tapSyncToggle">タップ同期で精度を上げる</div>
-    <div class="btn-secondary" id="downloadLrc" style="display:none;">修正後LRCを保存</div>
-  </div>
-
-  <div class="row edit-only" style="align-items:center;">
-    <div style="flex:1 1 260px; font-size:12px; color:#8b8f9e; padding:0 4px;">全体のタイミングをずらす</div>
-    <button id="shiftMinus100" class="ctrl" style="flex:0 0 auto;">−100ms</button>
-    <button id="shiftMinus30" class="ctrl" style="flex:0 0 auto;">−30ms</button>
-    <button id="shiftPlus30" class="ctrl" style="flex:0 0 auto;">+30ms</button>
-    <button id="shiftPlus100" class="ctrl" style="flex:0 0 auto;">+100ms</button>
-  </div>
-
-  <div id="tapSyncPanel" class="edit-only" style="display:none; width:100%; max-width:640px; margin-bottom:20px;">
-    <div style="background:#12141d; border:1px solid #C9A227; border-radius:14px; padding:20px; text-align:center;">
-      <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#8b8f9e; letter-spacing:.2em; margin-bottom:10px;">TAP SYNC</div>
-      <div id="tapNextWord" style="font-family:'Playfair Display',serif; font-size:28px; font-weight:700; color:#F4EFE0; margin-bottom:6px;">-</div>
-      <div id="tapProgress" style="font-size:12px; color:#565b6e; margin-bottom:16px;">0 / 0</div>
-      <button id="tapButton" style="width:100%; padding:22px; border-radius:14px; border:none; background:#C9A227; color:#14171f; font-size:17px; font-weight:700; cursor:pointer;">この単語が来たらタップ</button>
-      <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
-        <button id="tapUndo" style="flex:1; padding:10px; border-radius:8px; border:1px solid #2c3145; background:#1D2130; color:#c7cad6; font-size:13px;">ひとつ戻す</button>
-        <button id="tapFinish" style="flex:1; padding:10px; border-radius:8px; border:1px solid #2c3145; background:#1D2130; color:#c7cad6; font-size:13px;">終了して保存</button>
-      </div>
-      <div style="font-size:11.5px; color:#565b6e; margin-top:12px; line-height:1.6;">再生を押してから、画面の単語が実際に歌われた瞬間に大きいボタンをタップしてください。曲の最初から順番に進みます。</div>
-      <div style="margin-top:14px; padding-top:14px; border-top:1px solid #2c3145;">
-        <div style="font-size:11px; color:#8b8f9e; margin-bottom:6px;">反応時間の補正: <span id="reactionMsLabel">150</span>ms早める</div>
-        <input type="range" id="reactionMsSlider" min="0" max="400" step="10" value="150" style="width:100%;" />
-      </div>
-    </div>
-  </div>
-
   <audio id="player" controls style="display:none;"></audio>
-  <div class="edit-only" style="text-align:center; margin-bottom:20px;">
-    <span class="link-btn" id="toggleTimerMode">代わりにタイマーで進める</span>
+
+  <div style="text-align:center;" class="edit-only">
+    <span class="link-btn" id="advancedToggle">詳細設定を表示</span>
   </div>
 
-  <div class="timer-wrap edit-only" id="timerControls" style="display:none;">
-    <div class="clock" id="clock">0:00</div>
-    <div class="controls">
-      <button class="ctrl" id="back5">−5s</button>
-      <button class="ctrl primary" id="playPause">スタート</button>
-      <button class="ctrl" id="fwd5">+5s</button>
+  <div id="advancedSettings" class="edit-only" style="display:none;">
+    <div class="row">
+      <label class="filebox">
+        <span id="audioLabel">音源ファイルを選択(伴奏)</span>
+        <span style="color:#C9A227; font-weight:600; white-space:nowrap;">開く</span>
+        <input type="file" id="audioInput" />
+      </label>
+      <div class="btn-secondary" id="toggleEdit">歌詞(LRC)を編集</div>
+      <div class="btn-secondary" id="autoSplit">長い行を自動分割</div>
     </div>
-    <div style="text-align:center; margin-top:14px;">
-      <span class="link-btn" id="resetTimer">0秒に戻す</span>
+
+    <div class="row">
+      <label class="filebox">
+        <span id="wordTimingLabel">単語タイムスタンプ(LRC)を選択</span>
+        <span style="color:#C9A227; font-weight:600; white-space:nowrap;">開く</span>
+        <input type="file" id="wordTimingInput" />
+      </label>
     </div>
-  </div>
 
-  <div class="hint edit-only">歌詞の行をタップすると、その時間にジャンプできます</div>
+    <textarea id="lrcInput" style="display:none;">[00:00.00]ここに歌詞を貼り付けてください
+[00:04.20]LRC形式: [分:秒]歌詞
+[00:08.50]上の「歌詞(LRC)を編集」から貼り付け・修正できます</textarea>
 
-  <div class="row edit-only" style="margin-top:20px;">
-    <label class="filebox">
-      <span id="pitchLabel">お手本データ(pitch_reference.json)を選択</span>
-      <span style="color:#C9A227; font-weight:600; white-space:nowrap;">開く</span>
-      <input type="file" id="pitchInput" />
-    </label>
+    <div class="row">
+      <div class="btn-secondary" id="tapSyncToggle">タップ同期で精度を上げる</div>
+      <div class="btn-secondary" id="downloadLrc" style="display:none;">修正後LRCを保存</div>
+    </div>
+
+    <div class="row" style="align-items:center;">
+      <div style="flex:1 1 260px; font-size:12px; color:#8b8f9e; padding:0 4px;">全体のタイミングをずらす</div>
+      <button id="shiftMinus100" class="ctrl" style="flex:0 0 auto;">−100ms</button>
+      <button id="shiftMinus30" class="ctrl" style="flex:0 0 auto;">−30ms</button>
+      <button id="shiftPlus30" class="ctrl" style="flex:0 0 auto;">+30ms</button>
+      <button id="shiftPlus100" class="ctrl" style="flex:0 0 auto;">+100ms</button>
+    </div>
+
+    <div id="tapSyncPanel" style="display:none; width:100%; max-width:640px; margin-bottom:20px;">
+      <div style="background:#12141d; border:1px solid #C9A227; border-radius:14px; padding:20px; text-align:center;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#8b8f9e; letter-spacing:.2em; margin-bottom:10px;">TAP SYNC</div>
+        <div id="tapNextWord" style="font-family:'Playfair Display',serif; font-size:28px; font-weight:700; color:#F4EFE0; margin-bottom:6px;">-</div>
+        <div id="tapProgress" style="font-size:12px; color:#565b6e; margin-bottom:16px;">0 / 0</div>
+        <button id="tapButton" style="width:100%; padding:22px; border-radius:14px; border:none; background:#C9A227; color:#14171f; font-size:17px; font-weight:700; cursor:pointer;">この単語が来たらタップ</button>
+        <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
+          <button id="tapUndo" style="flex:1; padding:10px; border-radius:8px; border:1px solid #2c3145; background:#1D2130; color:#c7cad6; font-size:13px;">ひとつ戻す</button>
+          <button id="tapFinish" style="flex:1; padding:10px; border-radius:8px; border:1px solid #2c3145; background:#1D2130; color:#c7cad6; font-size:13px;">終了して保存</button>
+        </div>
+        <div style="font-size:11.5px; color:#565b6e; margin-top:12px; line-height:1.6;">再生を押してから、画面の単語が実際に歌われた瞬間に大きいボタンをタップしてください。曲の最初から順番に進みます。</div>
+        <div style="margin-top:14px; padding-top:14px; border-top:1px solid #2c3145;">
+          <div style="font-size:11px; color:#8b8f9e; margin-bottom:6px;">反応時間の補正: <span id="reactionMsLabel">150</span>ms早める</div>
+          <input type="range" id="reactionMsSlider" min="0" max="400" step="10" value="150" style="width:100%;" />
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center; margin-bottom:20px;">
+      <span class="link-btn" id="toggleTimerMode">代わりにタイマーで進める</span>
+    </div>
+
+    <div class="timer-wrap" id="timerControls" style="display:none;">
+      <div class="clock" id="clock">0:00</div>
+      <div class="controls">
+        <button class="ctrl" id="back5">−5s</button>
+        <button class="ctrl primary" id="playPause">スタート</button>
+        <button class="ctrl" id="fwd5">+5s</button>
+      </div>
+      <div style="text-align:center; margin-top:14px;">
+        <span class="link-btn" id="resetTimer">0秒に戻す</span>
+      </div>
+    </div>
+
+    <div class="hint">歌詞の行をタップすると、その時間にジャンプできます</div>
+
+    <div class="row" style="margin-top:20px;">
+      <label class="filebox">
+        <span id="pitchLabel">お手本データ(pitch_reference.json)を選択</span>
+        <span style="color:#C9A227; font-weight:600; white-space:nowrap;">開く</span>
+        <input type="file" id="pitchInput" />
+      </label>
+    </div>
   </div>
 
   <div class="row" id="scoreToggleRow" style="justify-content:center;">
@@ -342,6 +349,7 @@
   </div>
 
   <div id="finalScore" style="display:none; position:fixed; inset:0; height:100dvh; z-index:300; align-items:center; justify-content:center; background:rgba(6,7,12,0.9);">
+    <canvas id="confettiCanvas" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;"></canvas>
     <div id="finalScoreCard" style="width:88%; max-width:420px; text-align:center; padding:40px 28px; background:#161a26; border:1px solid #C9A227; border-radius:22px; box-shadow:0 20px 60px rgba(0,0,0,0.6);">
       <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:#8b8f9e; letter-spacing:.35em; margin-bottom:18px;">FINAL SCORE</div>
       <div>
@@ -1132,6 +1140,15 @@
 
   timerControls.style.display = 'none';
 
+  // ==================== 詳細設定の開閉 ====================
+  const advancedToggle = document.getElementById('advancedToggle');
+  const advancedSettings = document.getElementById('advancedSettings');
+  advancedToggle.addEventListener('click', () => {
+    const showing = advancedSettings.style.display !== 'none';
+    advancedSettings.style.display = showing ? 'none' : 'block';
+    advancedToggle.textContent = showing ? '詳細設定を表示' : '詳細設定を隠す';
+  });
+
   // ==================== モード切り替え ====================
   const modeToggle = document.getElementById('modeToggle');
   modeToggle.addEventListener('click', () => {
@@ -1630,6 +1647,69 @@
     return { bonus, range };
   }
 
+  function animateScoreCountUp(target, duration) {
+    const start = performance.now();
+    function tick(now) {
+      const elapsed = (now - start) / duration;
+      const p = Math.min(1, elapsed);
+      const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+      finalScoreNum.textContent = (target * eased).toFixed(1);
+      if (p < 1) requestAnimationFrame(tick);
+      else finalScoreNum.textContent = target.toFixed(1);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  const confettiCanvas = document.getElementById('confettiCanvas');
+  const cctx = confettiCanvas.getContext('2d');
+  function launchConfetti() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = window.innerWidth, h = window.innerHeight;
+    confettiCanvas.width = w * dpr;
+    confettiCanvas.height = h * dpr;
+    cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const colors = ['#C9A227', '#F4EFE0', '#e08a7a', '#7ec4e8', '#e0a8f0'];
+    const particles = [];
+    for (let i = 0; i < 90; i++) {
+      particles.push({
+        x: Math.random() * w,
+        y: -20 - Math.random() * h * 0.5,
+        vx: (Math.random() - 0.5) * 2,
+        vy: 2 + Math.random() * 3,
+        size: 4 + Math.random() * 5,
+        rot: Math.random() * Math.PI * 2,
+        vrot: (Math.random() - 0.5) * 0.3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+      });
+    }
+
+    const startT = performance.now();
+    function tick(now) {
+      const elapsed = now - startT;
+      cctx.clearRect(0, 0, w, h);
+      let anyOnScreen = false;
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vrot;
+        if (p.y < h + 20) anyOnScreen = true;
+        cctx.save();
+        cctx.translate(p.x, p.y);
+        cctx.rotate(p.rot);
+        cctx.fillStyle = p.color;
+        cctx.fillRect(-p.size / 2, -p.size / 3, p.size, p.size * 0.6);
+        cctx.restore();
+      }
+      if (anyOnScreen && elapsed < 3500) {
+        requestAnimationFrame(tick);
+      } else {
+        cctx.clearRect(0, 0, w, h);
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+
   function stopScoring() {
     scoring = false;
     liveHz = 0;
@@ -1644,12 +1724,14 @@
       const { bonus: dynamicsBonus, range: dynamicsRange } = computeDynamicsBonus(loudnessHistory);
       const expressionBonus = Math.min(3, scoopCount * 0.5) + Math.min(3, vibratoCount * 0.5) + dynamicsBonus;
       const total = Math.min(100, avg + expressionBonus);
-      finalScoreNum.textContent = total.toFixed(1);
+      finalScoreNum.textContent = '0.0';
       finalScoopCount.textContent = scoopCount;
       finalVibratoCount.textContent = vibratoCount;
       finalDynamicsRange.textContent = dynamicsRange.toFixed(1) + 'dB';
       window.scrollTo(0, 0);
       finalScoreBox.style.display = 'flex';
+      animateScoreCountUp(total, 1100);
+      if (total >= 85) setTimeout(launchConfetti, 200);
     }
   }
 
