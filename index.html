@@ -61,6 +61,9 @@
     padding: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; line-height: 1.6;
     margin-bottom: 20px; resize: vertical;
   }
+  #performStage {
+    position: relative; width: 100%; max-width: 640px;
+  }
   #lyricsBox {
     width: 100%; max-width: 640px; height: 260px; overflow-y: auto;
     background: #12141d; border: 1px solid #262a3a; border-radius: 14px;
@@ -140,7 +143,7 @@
   /* 本番モードでの表示順: タイトル→(音程バー+歌詞を1枚にまとめたステージ)→再生/採点 */
   body.perform-mode #performStage {
     order: 2;
-    width: calc(100% + 32px);
+    width: calc(100% + 32px); max-width: none;
     margin-left: -16px; margin-right: -16px; margin-top: 4px;
     background: #0c0e15;
     border-top: 1px solid #262a3a; border-bottom: 1px solid #262a3a;
@@ -228,10 +231,24 @@
     </div>
   </div>
 
+  <div style="text-align:center;" class="edit-only">
+    <div id="festaToggle" style="display:inline-block; background:#1D2130; color:#e08a7a; border:1px solid #e08a7a; border-radius:999px; padding:9px 18px; font-size:13px; font-weight:700; cursor:pointer; margin-bottom:14px;">🎉 祭りモード: OFF</div>
+  </div>
+
   <div id="performStage">
     <canvas id="pitchHighway" width="640" height="140" style="display:none; width:100%; max-width:640px; height:140px; background:#0c0e15; border:1px solid #262a3a; border-radius:14px; margin-bottom:14px;"></canvas>
 
     <div id="lyricsBox"></div>
+
+    <div id="comboDisplay" style="display:none; position:absolute; top:10px; right:14px; text-align:right; pointer-events:none;">
+      <div style="font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:30px; color:#F4EFE0; text-shadow:0 0 16px rgba(201,162,39,0.7);">
+        <span id="comboCount">0</span><span style="font-size:16px;"> COMBO</span>
+      </div>
+    </div>
+
+    <div id="comboCelebration" style="display:none; position:absolute; inset:0; align-items:center; justify-content:center; pointer-events:none;">
+      <div id="comboCelebrationText" style="font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:44px; color:#C9A227; text-shadow:0 0 24px rgba(201,162,39,0.9);"></div>
+    </div>
   </div>
 
   <audio id="player" controls style="display:none;"></audio>
@@ -279,14 +296,14 @@
     <div id="tapSyncPanel" style="display:none; width:100%; max-width:640px; margin-bottom:20px;">
       <div style="background:#12141d; border:1px solid #C9A227; border-radius:14px; padding:20px; text-align:center;">
         <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#8b8f9e; letter-spacing:.2em; margin-bottom:10px;">TAP SYNC</div>
-        <div id="tapNextWord" style="font-family:'Playfair Display',serif; font-size:28px; font-weight:700; color:#F4EFE0; margin-bottom:6px;">-</div>
+        <div id="tapNextWord" style="font-family:'Playfair Display',serif; font-size:19px; line-height:1.4; font-weight:700; color:#F4EFE0; margin-bottom:6px;">-</div>
         <div id="tapProgress" style="font-size:12px; color:#565b6e; margin-bottom:16px;">0 / 0</div>
-        <button id="tapButton" style="width:100%; padding:22px; border-radius:14px; border:none; background:#C9A227; color:#14171f; font-size:17px; font-weight:700; cursor:pointer;">この単語が来たらタップ</button>
+        <button id="tapButton" style="width:100%; padding:22px; border-radius:14px; border:none; background:#C9A227; color:#14171f; font-size:17px; font-weight:700; cursor:pointer;">この行が来たらタップ</button>
         <div style="display:flex; gap:10px; margin-top:12px; justify-content:center;">
           <button id="tapUndo" style="flex:1; padding:10px; border-radius:8px; border:1px solid #2c3145; background:#1D2130; color:#c7cad6; font-size:13px;">ひとつ戻す</button>
           <button id="tapFinish" style="flex:1; padding:10px; border-radius:8px; border:1px solid #2c3145; background:#1D2130; color:#c7cad6; font-size:13px;">終了して保存</button>
         </div>
-        <div style="font-size:11.5px; color:#565b6e; margin-top:12px; line-height:1.6;">再生を押してから、画面の単語が実際に歌われた瞬間に大きいボタンをタップしてください。曲の最初から順番に進みます。</div>
+        <div style="font-size:11.5px; color:#565b6e; margin-top:12px; line-height:1.6;">再生を押してから、画面に表示された歌詞の行が実際に歌われ始めた瞬間に大きいボタンをタップしてください。1行ごとでOKなので気軽に進められます。</div>
         <div style="margin-top:14px; padding-top:14px; border-top:1px solid #2c3145;">
           <div style="font-size:11px; color:#8b8f9e; margin-bottom:6px;">反応時間の補正: <span id="reactionMsLabel">150</span>ms早める</div>
           <input type="range" id="reactionMsSlider" min="0" max="400" step="10" value="150" style="width:100%;" />
@@ -356,7 +373,7 @@
         <span id="finalScoreNum" style="font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:76px; color:#F4EFE0; text-shadow:0 0 30px rgba(201,162,39,0.4);">--</span>
       </div>
       <div style="font-size:16px; color:#8b8f9e; margin-top:2px; margin-bottom:20px;">/ 100点</div>
-      <div style="display:flex; justify-content:center; gap:20px; margin-bottom:28px; padding-top:16px; border-top:1px solid #2c3145;">
+      <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:16px; margin-bottom:28px; padding-top:16px; border-top:1px solid #2c3145;">
         <div style="text-align:center;">
           <div style="font-size:10px; color:#8b8f9e; letter-spacing:.1em;">Portamento</div>
           <div id="finalScoopCount" style="font-family:'IBM Plex Mono',monospace; font-size:20px; color:#c7cad6;">0</div>
@@ -368,6 +385,10 @@
         <div style="text-align:center;">
           <div style="font-size:10px; color:#8b8f9e; letter-spacing:.1em;">Espressione</div>
           <div id="finalDynamicsRange" style="font-family:'IBM Plex Mono',monospace; font-size:20px; color:#c7cad6;">--</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:10px; color:#8b8f9e; letter-spacing:.1em;">Max Combo</div>
+          <div id="finalMaxCombo" style="font-family:'IBM Plex Mono',monospace; font-size:20px; color:#c7cad6;">0</div>
         </div>
       </div>
       <button id="closeFinalScore" style="background:#C9A227; color:#14171f; border:none; border-radius:999px; padding:14px 40px; font-size:15px; font-weight:700; cursor:pointer; touch-action:manipulation;">閉じる</button>
@@ -601,7 +622,7 @@
   const tapFinish = document.getElementById('tapFinish');
   const downloadLrcBtn = document.getElementById('downloadLrc');
 
-  let flatWords = []; // {lineIdx, wordIdx, word, time}
+  let flatLines = []; // {lineIdx, text, time}
   let tapIdx = 0;
   let tapSyncActive = false;
   let reactionOffsetMs = 150;
@@ -613,24 +634,19 @@
     reactionMsLabel.textContent = reactionOffsetMs;
   });
 
-  function buildFlatWords() {
-    flatWords = [];
-    lines.forEach((l, li) => {
-      (l.wordTimes || []).forEach((w, wi) => {
-        flatWords.push({ lineIdx: li, wordIdx: wi, word: w.word, time: w.time });
-      });
-    });
+  function buildFlatLines() {
+    flatLines = lines.map((l, li) => ({ lineIdx: li, text: l.text, time: l.time }));
   }
 
   function updateTapUI() {
-    tapProgress.textContent = `${tapIdx} / ${flatWords.length}`;
-    tapNextWord.textContent = tapIdx < flatWords.length ? flatWords[tapIdx].word : '完了';
+    tapProgress.textContent = `${tapIdx} / ${flatLines.length} 行`;
+    tapNextWord.textContent = tapIdx < flatLines.length ? flatLines[tapIdx].text : '完了';
   }
 
   tapSyncToggle.addEventListener('click', () => {
     tapSyncActive = !tapSyncActive;
     if (tapSyncActive) {
-      buildFlatWords();
+      buildFlatLines();
       tapIdx = 0;
       updateTapUI();
       tapSyncPanel.style.display = 'block';
@@ -648,12 +664,12 @@
   });
 
   tapButton.addEventListener('click', () => {
-    if (tapIdx >= flatWords.length) return;
+    if (tapIdx >= flatLines.length) return;
     const t = useTimerMode ? timerCurrent : (player.src ? player.currentTime : 0);
-    flatWords[tapIdx].time = Math.max(0, t - reactionOffsetMs / 1000);
+    flatLines[tapIdx].time = Math.max(0, t - reactionOffsetMs / 1000);
     tapIdx++;
     updateTapUI();
-    if (tapIdx >= flatWords.length) {
+    if (tapIdx >= flatLines.length) {
       applyTapTimes();
       downloadWordLrc();
       tapSyncActive = false;
@@ -696,21 +712,18 @@
   });
 
   function applyTapTimes() {
-    // タップ済みの分だけ実際の時刻を反映する(未タップ分は元のままにする)
-    flatWords.forEach((fw, i) => {
+    // タップ済みの行だけ、実際にタップした時刻を反映する(未タップ分は元のまま)
+    flatLines.forEach((fl, i) => {
       if (i < tapIdx) {
-        lines[fw.lineIdx].wordTimes[fw.wordIdx].time = fw.time;
+        lines[fl.lineIdx].time = fl.time;
       }
     });
-    // 行自体の開始時刻も、タップ済みの先頭単語に合わせて更新する
-    // (これをしないと、行がハイライトされる/中央にスクロールされるタイミングが
-    //  古いままになり、単語の色付けだけ合っていても大きくズレて見える)
-    lines.forEach(l => {
-      if (l.wordTimes && l.wordTimes.length > 0) {
-        l.time = l.wordTimes[0].time;
-      }
+    // 各行の中の単語タイミングは、行の開始時刻(タップ結果)を基準に自動で按分し直す
+    lines.forEach((l, i) => {
+      const nextTime = (i + 1 < lines.length) ? lines[i + 1].time : l.time + 4;
+      l.wordTimes = computeProportionalWordTimes(l, nextTime);
+      l.wordTimesReal = true;
     });
-    lines.forEach(l => { l.wordTimesReal = true; });
     renderLyrics();
     buildLyricWindows();
     updateActiveLine(useTimerMode ? timerCurrent : (player.src ? player.currentTime : 0));
@@ -1209,6 +1222,7 @@
   const finalScoopCount = document.getElementById('finalScoopCount');
   const finalVibratoCount = document.getElementById('finalVibratoCount');
   const finalDynamicsRange = document.getElementById('finalDynamicsRange');
+  const finalMaxCombo = document.getElementById('finalMaxCombo');
 
   let referenceCurve = null; // [{t, hz}]
   let referenceNotes = null; // [{start,end,hz}] 連続音をまとめたノート
@@ -1230,6 +1244,39 @@
   let vibratoActive = false;
   let vibratoCooldownUntil = 0;
   let loudnessHistory = []; // dB値のログ(曲全体の抑揚を評価するため)
+
+  // 祭りモード用
+  let festaMode = false;
+  let combo = 0;
+  let maxCombo = 0;
+  const comboDisplay = document.getElementById('comboDisplay');
+  const comboCount = document.getElementById('comboCount');
+  const comboCelebration = document.getElementById('comboCelebration');
+  const comboCelebrationText = document.getElementById('comboCelebrationText');
+  let comboCelebrationTimer = null;
+
+  const festaToggle = document.getElementById('festaToggle');
+  festaToggle.addEventListener('click', () => {
+    festaMode = !festaMode;
+    festaToggle.textContent = festaMode ? '🎉 祭りモード: ON' : '🎉 祭りモード: OFF';
+    festaToggle.style.background = festaMode ? '#e08a7a' : '#1D2130';
+    festaToggle.style.color = festaMode ? '#14171f' : '#e08a7a';
+  });
+
+  const COMBO_MESSAGES = ['Forza!', 'Bravo!', 'Perfetto!', 'Magnifico!', 'Fantastico!'];
+  function celebrateCombo(n) {
+    const msg = COMBO_MESSAGES[Math.min(COMBO_MESSAGES.length - 1, Math.floor(n / 10) - 1)];
+    comboCelebrationText.textContent = `${msg} ×${n}`;
+    comboCelebration.style.display = 'flex';
+    comboCelebration.style.opacity = '1';
+    comboCelebration.style.transition = 'none';
+    clearTimeout(comboCelebrationTimer);
+    comboCelebrationTimer = setTimeout(() => {
+      comboCelebration.style.transition = 'opacity 0.6s ease';
+      comboCelebration.style.opacity = '0';
+    }, 500);
+    if (n % 20 === 0) launchConfetti();
+  }
 
   const highway = document.getElementById('pitchHighway');
   const hctx = highway.getContext('2d');
@@ -1593,9 +1640,15 @@
     vibratoCount = 0;
     vibratoActive = false;
     vibratoCooldownUntil = 0;
+    combo = 0;
+    maxCombo = 0;
+    comboLastIncrementT = 0;
+    comboOffSince = null;
+    comboCount.textContent = '0';
     scoopCountEl.textContent = '0';
     vibratoCountEl.textContent = '0';
     scorePanel.style.display = 'block';
+    comboDisplay.style.display = festaMode ? 'block' : 'none';
     finalScoreBox.style.display = 'none';
     scoreToggle.textContent = '採点ストップ';
     scoreToggle.classList.add('active');
@@ -1612,14 +1665,16 @@
         liveHz = hz;
         const cents = hzToCents(hz, refHz);
         const clamped = Math.max(-100, Math.min(100, cents));
+        const ok = Math.abs(cents) < 50;
         pitchMeter.style.width = (50 + clamped / 2) + '%';
-        pitchMeter.style.background = Math.abs(cents) < 50 ? '#C9A227' : '#e08a7a';
+        pitchMeter.style.background = ok ? '#C9A227' : '#e08a7a';
         const frameScore = Math.max(0, 100 - Math.abs(cents));
         scoreSamples.push(frameScore);
         liveScoreEl.textContent = Math.round(frameScore);
-        sungTrail.push({ t, hz, ok: Math.abs(cents) < 50 });
+        sungTrail.push({ t, hz, ok });
         detectScoop(t, cents, hz);
         detectVibrato(t, cents, hz);
+        updateCombo(t, ok);
 
         const rms = computeRMS(buf);
         const db = 20 * Math.log10(Math.max(rms, 0.0001));
@@ -1630,10 +1685,35 @@
         pitchMeter.style.background = '#565b6e';
         liveScoreEl.textContent = '--';
         if (hz > 0) sungTrail.push({ t, hz, ok: false });
+        updateCombo(t, false);
       }
       scoreRafId = requestAnimationFrame(loop);
     }
     loop();
+  }
+
+  let comboLastIncrementT = 0;
+  let comboOffSince = null;
+  function updateCombo(t, ok) {
+    if (ok) {
+      comboOffSince = null;
+      if (t - comboLastIncrementT >= 0.15) {
+        combo++;
+        comboLastIncrementT = t;
+        if (combo > maxCombo) maxCombo = combo;
+        if (festaMode) {
+          comboCount.textContent = combo;
+          if (combo % 10 === 0) celebrateCombo(combo);
+        }
+      }
+    } else {
+      if (comboOffSince === null) comboOffSince = t;
+      else if (t - comboOffSince > 0.2 && combo > 0) {
+        combo = 0;
+        comboOffSince = t;
+        if (festaMode) comboCount.textContent = '0';
+      }
+    }
   }
 
   function computeDynamicsBonus(history) {
@@ -1728,11 +1808,14 @@
       finalScoopCount.textContent = scoopCount;
       finalVibratoCount.textContent = vibratoCount;
       finalDynamicsRange.textContent = dynamicsRange.toFixed(1) + 'dB';
+      if (finalMaxCombo) finalMaxCombo.textContent = maxCombo;
       window.scrollTo(0, 0);
       finalScoreBox.style.display = 'flex';
       animateScoreCountUp(total, 1100);
       if (total >= 85) setTimeout(launchConfetti, 200);
     }
+    comboDisplay.style.display = 'none';
+    comboCelebration.style.display = 'none';
   }
 
   document.getElementById('closeFinalScore').addEventListener('click', () => {
