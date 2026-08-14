@@ -1438,6 +1438,7 @@
   const highway = document.getElementById('pitchHighway');
   const hctx = highway.getContext('2d');
   let highwayRafId = null;
+  let liveDisplayY = null; // ライブピッチのなめらかな追従用
 
   function buildNotes(curve) {
     // 無音判定を挟んでも、半音レーンが同じで間隔が短ければ同じ音として繋げる
@@ -1521,6 +1522,15 @@
     const lo = Math.log2(HZ_MIN), hi = Math.log2(HZ_MAX);
     const v = Math.max(lo, Math.min(hi, Math.log2(hz)));
     return h - ((v - lo) / (hi - lo)) * h;
+  }
+
+  // ライブの声の点だけは、大きく音を外した時に枠の端まで張り付かないよう
+  // 上下に少し余白を残してクランプする(視覚的な落ち着きのため)
+  const LIVE_Y_PADDING = 0.14;
+  function hzToYPadded(hz, h) {
+    const raw = hzToY(hz, h);
+    const pad = h * LIVE_Y_PADDING;
+    return Math.max(pad, Math.min(h - pad, raw));
   }
 
   // 曲で実際に使われている音域だけに絞り込み、1レーンの幅を広くしてDAM風に見やすくする
@@ -1657,13 +1667,16 @@
       hctx.textAlign = 'start';
     }
 
-    // 自分の声(ライブピッチ)をプレイヘッド上に強調表示(半音レーンにスナップ)
+    // 自分の声(ライブピッチ)をプレイヘッド上に強調表示(半音レーンにスナップ+なめらかに追従)
     if (scoring && liveHz > 0) {
-      const y = hzToY(quantizeToSemitone(liveHz), h);
+      const targetY = hzToYPadded(quantizeToSemitone(liveHz), h);
+      liveDisplayY = (liveDisplayY === null) ? targetY : liveDisplayY + (targetY - liveDisplayY) * 0.3;
       hctx.fillStyle = '#e08a7a';
       hctx.beginPath();
-      hctx.arc(px, y, 6, 0, Math.PI * 2);
+      hctx.arc(px, liveDisplayY, 6, 0, Math.PI * 2);
       hctx.fill();
+    } else {
+      liveDisplayY = null;
     }
 
     highwayRafId = requestAnimationFrame(drawHighway);
@@ -1809,6 +1822,7 @@
     maxCombo = 0;
     comboLastIncrementT = 0;
     comboOffSince = null;
+    liveDisplayY = null;
     comboCount.textContent = '0';
     scoopCountEl.textContent = '0';
     vibratoCountEl.textContent = '0';
