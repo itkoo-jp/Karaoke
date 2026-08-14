@@ -147,7 +147,11 @@
     margin-left: -16px; margin-right: -16px; margin-top: 4px;
     background: #0c0e15;
     border-top: 1px solid #262a3a; border-bottom: 1px solid #262a3a;
+    transition: background 0.6s ease;
   }
+  body.perform-mode.theme-dusk #performStage { background: radial-gradient(ellipse at 50% -10%, #3a2e55 0%, #14171f 60%, #0c0e15 100%); }
+  body.perform-mode.theme-disco #performStage { background: radial-gradient(ellipse at 30% 0%, #5a2e4e 0%, #142035 55%, #0c0e15 100%); }
+  body.perform-mode.theme-stars #performStage { background: radial-gradient(ellipse at 60% -10%, #16324a 0%, #10131c 55%, #0c0e15 100%); }
   body.perform-mode audio#player { order: 4; margin-top: 10px; }
   body.perform-mode .error { order: 7; }
 
@@ -232,7 +236,17 @@
   </div>
 
   <div style="text-align:center;" class="edit-only">
-    <div id="festaToggle" style="display:inline-block; background:#1D2130; color:#e08a7a; border:1px solid #e08a7a; border-radius:999px; padding:9px 18px; font-size:13px; font-weight:700; cursor:pointer; margin-bottom:14px;">🎉 祭りモード: OFF</div>
+    <div id="festaToggle" style="display:inline-block; background:#1D2130; color:#e08a7a; border:1px solid #e08a7a; border-radius:999px; padding:9px 18px; font-size:13px; font-weight:700; cursor:pointer; margin-bottom:8px; margin-right:6px;">🎉 祭りモード: OFF</div>
+    <div id="venueToggle" style="display:inline-block; background:#1D2130; color:#7ec4e8; border:1px solid #7ec4e8; border-radius:999px; padding:9px 18px; font-size:13px; font-weight:700; cursor:pointer; margin-bottom:14px;">🎤 会場エフェクト: OFF</div>
+  </div>
+
+  <div style="text-align:center; margin-bottom:16px;" class="edit-only">
+    <div style="font-size:11px; color:#8b8f9e; letter-spacing:.1em; margin-bottom:8px;">ステージの雰囲気</div>
+    <div style="display:flex; gap:8px; justify-content:center;">
+      <div class="theme-dot" data-theme="dusk" style="width:34px; height:34px; border-radius:50%; cursor:pointer; border:2px solid #C9A227; background:radial-gradient(circle at 35% 30%, #3a2e55, #1c2136);"></div>
+      <div class="theme-dot" data-theme="disco" style="width:34px; height:34px; border-radius:50%; cursor:pointer; border:2px solid transparent; background:radial-gradient(circle at 35% 30%, #5a2e4e, #14171f);"></div>
+      <div class="theme-dot" data-theme="stars" style="width:34px; height:34px; border-radius:50%; cursor:pointer; border:2px solid transparent; background:radial-gradient(circle at 35% 30%, #16324a, #0c0e15);"></div>
+    </div>
   </div>
 
   <div id="performStage">
@@ -369,11 +383,13 @@
     <canvas id="confettiCanvas" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;"></canvas>
     <div id="finalScoreCard" style="width:88%; max-width:420px; text-align:center; padding:40px 28px; background:#161a26; border:1px solid #C9A227; border-radius:22px; box-shadow:0 20px 60px rgba(0,0,0,0.6);">
       <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:#8b8f9e; letter-spacing:.35em; margin-bottom:18px;">FINAL SCORE</div>
+      <div id="newRecordBanner" style="display:none; color:#C9A227; font-weight:700; font-size:13px; letter-spacing:.15em; margin-bottom:8px;">✨ NUOVO RECORD! ✨</div>
       <div>
         <span id="finalScoreNum" style="font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:76px; color:#F4EFE0; text-shadow:0 0 30px rgba(201,162,39,0.4);">--</span>
       </div>
-      <div style="font-size:16px; color:#8b8f9e; margin-top:2px; margin-bottom:20px;">/ 100点</div>
-      <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:16px; margin-bottom:28px; padding-top:16px; border-top:1px solid #2c3145;">
+      <div style="font-size:16px; color:#8b8f9e; margin-top:2px; margin-bottom:6px;">/ 100点</div>
+      <div id="rankTitle" style="font-family:'Playfair Display',serif; font-style:italic; font-size:18px; color:#C9A227; margin-bottom:14px;"></div>
+      <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:16px; margin-bottom:24px; padding-top:16px; border-top:1px solid #2c3145;">
         <div style="text-align:center;">
           <div style="font-size:10px; color:#8b8f9e; letter-spacing:.1em;">Portamento</div>
           <div id="finalScoopCount" style="font-family:'IBM Plex Mono',monospace; font-size:20px; color:#c7cad6;">0</div>
@@ -391,7 +407,10 @@
           <div id="finalMaxCombo" style="font-family:'IBM Plex Mono',monospace; font-size:20px; color:#c7cad6;">0</div>
         </div>
       </div>
-      <button id="closeFinalScore" style="background:#C9A227; color:#14171f; border:none; border-radius:999px; padding:14px 40px; font-size:15px; font-weight:700; cursor:pointer; touch-action:manipulation;">閉じる</button>
+      <div style="display:flex; gap:10px;">
+        <button id="closeFinalScore" style="flex:1; background:#C9A227; color:#14171f; border:none; border-radius:999px; padding:14px 20px; font-size:15px; font-weight:700; cursor:pointer; touch-action:manipulation;">閉じる</button>
+        <button id="shareCardBtn" style="flex:1; background:#1D2130; color:#C9A227; border:1px solid #C9A227; border-radius:999px; padding:14px 20px; font-size:15px; font-weight:700; cursor:pointer; touch-action:manipulation;">画像で共有</button>
+      </div>
     </div>
   </div>
 
@@ -750,22 +769,50 @@
   // ==================== 曲ライブラリ(IndexedDB) ====================
   const LIB_DB_NAME = 'karaoke_library';
   const LIB_STORE = 'songs';
+  const BEST_STORE = 'bestScores';
   let libDbPromise = null;
 
   function openLibraryDb() {
     if (libDbPromise) return libDbPromise;
     libDbPromise = new Promise((resolve, reject) => {
-      const req = indexedDB.open(LIB_DB_NAME, 1);
+      const req = indexedDB.open(LIB_DB_NAME, 2);
       req.onupgradeneeded = () => {
         const db = req.result;
         if (!db.objectStoreNames.contains(LIB_STORE)) {
           db.createObjectStore(LIB_STORE, { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains(BEST_STORE)) {
+          db.createObjectStore(BEST_STORE, { keyPath: 'songKey' });
         }
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });
     return libDbPromise;
+  }
+
+  function songKeyFor(title, artist) {
+    return (title || 'untitled').trim().toLowerCase() + '::' + (artist || '').trim().toLowerCase();
+  }
+
+  async function getBestScore(songKey) {
+    const db = await openLibraryDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(BEST_STORE, 'readonly');
+      const req = tx.objectStore(BEST_STORE).get(songKey);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function setBestScore(songKey, score) {
+    const db = await openLibraryDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(BEST_STORE, 'readwrite');
+      tx.objectStore(BEST_STORE).put({ songKey, score, updatedAt: Date.now() });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
   }
 
   async function saveSongToLibrary(song) {
@@ -1223,6 +1270,9 @@
   const finalVibratoCount = document.getElementById('finalVibratoCount');
   const finalDynamicsRange = document.getElementById('finalDynamicsRange');
   const finalMaxCombo = document.getElementById('finalMaxCombo');
+  const rankTitleEl = document.getElementById('rankTitle');
+  const newRecordBanner = document.getElementById('newRecordBanner');
+  let lastFinalScoreData = null;
 
   let referenceCurve = null; // [{t, hz}]
   let referenceNotes = null; // [{start,end,hz}] 連続音をまとめたノート
@@ -1244,6 +1294,111 @@
   let vibratoActive = false;
   let vibratoCooldownUntil = 0;
   let loudnessHistory = []; // dB値のログ(曲全体の抑揚を評価するため)
+
+  // ==================== 音の演出(効果音・観客の環境音) ====================
+  let sfxCtx = null;
+  function getSfxCtx() {
+    if (!sfxCtx) sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return sfxCtx;
+  }
+
+  function playComboPop() {
+    const ctx = getSfxCtx();
+    const t0 = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, t0);
+    osc.frequency.exponentialRampToValueAtTime(1568, t0 + 0.09);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.22, t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0); osc.stop(t0 + 0.2);
+  }
+
+  function playCheer() {
+    const ctx = getSfxCtx();
+    const dur = 1.6;
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass'; filter.frequency.value = 1600; filter.Q.value = 0.5;
+    const gain = ctx.createGain();
+    const t0 = ctx.currentTime;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.28, t0 + 0.2);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    noise.connect(filter).connect(gain).connect(ctx.destination);
+    noise.start(t0); noise.stop(t0 + dur);
+  }
+
+  // 観客のざわめき(マイクには一切触れず、独立した環境音を裏で鳴らすだけなのでハウリングの心配がない)
+  let ambience = null;
+  function startCrowdAmbience() {
+    if (ambience) return;
+    const ctx = getSfxCtx();
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.6;
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer; noise.loop = true;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass'; filter.frequency.value = 700;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.04;
+    noise.connect(filter).connect(gain).connect(ctx.destination);
+    noise.start();
+    ambience = { noise, gain };
+  }
+  function stopCrowdAmbience() {
+    if (!ambience) return;
+    try { ambience.noise.stop(); } catch (e) {}
+    ambience = null;
+  }
+
+  let venueEffectOn = false;
+  const venueToggle = document.getElementById('venueToggle');
+  venueToggle.addEventListener('click', () => {
+    venueEffectOn = !venueEffectOn;
+    venueToggle.textContent = venueEffectOn ? '🎤 会場エフェクト: ON' : '🎤 会場エフェクト: OFF';
+    venueToggle.style.background = venueEffectOn ? '#7ec4e8' : '#1D2130';
+    venueToggle.style.color = venueEffectOn ? '#14171f' : '#7ec4e8';
+    if (!venueEffectOn) stopCrowdAmbience();
+  });
+
+  // ステージの雰囲気(背景テーマ)選択
+  const themeDots = document.querySelectorAll('.theme-dot');
+  themeDots.forEach(dot => {
+    dot.addEventListener('click', () => {
+      document.body.classList.remove('theme-dusk', 'theme-disco', 'theme-stars');
+      document.body.classList.add('theme-' + dot.dataset.theme);
+      themeDots.forEach(d => { d.style.borderColor = 'transparent'; });
+      dot.style.borderColor = '#C9A227';
+    });
+  });
+  document.body.classList.add('theme-dusk');
+
+  // 観客のハート・星のリアクション(コンボが伸びている時に画面端から浮かび上がる)
+  function spawnCrowdReaction() {
+    const stage = document.getElementById('performStage');
+    const icons = ['❤️', '✨', '⭐️', '🎶'];
+    for (let i = 0; i < 3; i++) {
+      const el = document.createElement('div');
+      el.textContent = icons[Math.floor(Math.random() * icons.length)];
+      const startX = 10 + Math.random() * 80;
+      el.style.cssText = `position:absolute; left:${startX}%; bottom:6px; font-size:${16 + Math.random() * 14}px; pointer-events:none; opacity:0.9; transition: transform 1.6s ease-out, opacity 1.6s ease-out; z-index:20;`;
+      stage.appendChild(el);
+      requestAnimationFrame(() => {
+        el.style.transform = `translateY(-${140 + Math.random() * 80}px) translateX(${(Math.random() - 0.5) * 60}px) rotate(${(Math.random() - 0.5) * 40}deg)`;
+        el.style.opacity = '0';
+      });
+      setTimeout(() => el.remove(), 1800);
+    }
+  }
 
   // 祭りモード用
   let festaMode = false;
@@ -1275,6 +1430,8 @@
       comboCelebration.style.transition = 'opacity 0.6s ease';
       comboCelebration.style.opacity = '0';
     }, 500);
+    playComboPop();
+    spawnCrowdReaction();
     if (n % 20 === 0) launchConfetti();
   }
 
@@ -1649,6 +1806,7 @@
     vibratoCountEl.textContent = '0';
     scorePanel.style.display = 'block';
     comboDisplay.style.display = festaMode ? 'block' : 'none';
+    if (venueEffectOn) startCrowdAmbience();
     finalScoreBox.style.display = 'none';
     scoreToggle.textContent = '採点ストップ';
     scoreToggle.classList.add('active');
@@ -1790,6 +1948,15 @@
     requestAnimationFrame(tick);
   }
 
+  function getRankTitle(score) {
+    if (score >= 95) return "Voce d'Oro";
+    if (score >= 88) return 'Stella del Palco';
+    if (score >= 80) return 'Cantante Provetto';
+    if (score >= 70) return 'Promessa';
+    if (score >= 55) return 'Stella Nascente';
+    return 'Debuttante';
+  }
+
   function stopScoring() {
     scoring = false;
     liveHz = 0;
@@ -1809,13 +1976,31 @@
       finalVibratoCount.textContent = vibratoCount;
       finalDynamicsRange.textContent = dynamicsRange.toFixed(1) + 'dB';
       if (finalMaxCombo) finalMaxCombo.textContent = maxCombo;
+      rankTitleEl.textContent = getRankTitle(total);
+      newRecordBanner.style.display = 'none';
       window.scrollTo(0, 0);
       finalScoreBox.style.display = 'flex';
       animateScoreCountUp(total, 1100);
-      if (total >= 85) setTimeout(launchConfetti, 200);
+      if (total >= 85) { setTimeout(launchConfetti, 200); playCheer(); }
+
+      lastFinalScoreData = {
+        total, scoopCount, vibratoCount, dynamicsRange, maxCombo,
+        rank: getRankTitle(total),
+        songTitle: songTitleInput.value || 'タイトル未設定',
+        artistName: artistNameInput.value || '',
+      };
+
+      const songKey = songKeyFor(songTitleInput.value, artistNameInput.value);
+      getBestScore(songKey).then(best => {
+        if (!best || total > best.score) {
+          newRecordBanner.style.display = 'block';
+          setBestScore(songKey, total);
+        }
+      }).catch(() => {});
     }
     comboDisplay.style.display = 'none';
     comboCelebration.style.display = 'none';
+    stopCrowdAmbience();
   }
 
   document.getElementById('closeFinalScore').addEventListener('click', () => {
@@ -1826,6 +2011,117 @@
     if (e.target === finalScoreBox) {
       finalScoreBox.style.display = 'none';
     }
+  });
+
+  // ==================== シェア用スコアカード ====================
+  function drawShareCard(data) {
+    const cv = document.createElement('canvas');
+    cv.width = 1080; cv.height = 1350;
+    const ctx = cv.getContext('2d');
+
+    const grad = ctx.createRadialGradient(540, 200, 100, 540, 700, 900);
+    grad.addColorStop(0, '#1c2136');
+    grad.addColorStop(0.55, '#14171f');
+    grad.addColorStop(1, '#0c0e15');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, cv.width, cv.height);
+
+    ctx.strokeStyle = 'rgba(201,162,39,0.5)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(30, 30, cv.width - 60, cv.height - 60);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#8b8f9e';
+    ctx.font = '28px "IBM Plex Mono", monospace';
+    ctx.fillText('PERSONAL KARAOKE STUDIO', 540, 150);
+
+    ctx.fillStyle = '#F4EFE0';
+    ctx.font = 'italic 700 64px "Playfair Display", serif';
+    wrapText(ctx, data.songTitle, 540, 250, 900, 70);
+
+    ctx.fillStyle = '#c7cad6';
+    ctx.font = '32px "Work Sans", sans-serif';
+    ctx.fillText(data.artistName, 540, 340);
+
+    ctx.fillStyle = '#C9A227';
+    ctx.font = 'italic 700 220px "Playfair Display", serif';
+    ctx.shadowColor = 'rgba(201,162,39,0.6)';
+    ctx.shadowBlur = 40;
+    ctx.fillText(data.total.toFixed(1), 540, 700);
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = '#8b8f9e';
+    ctx.font = '30px "IBM Plex Mono", monospace';
+    ctx.fillText('/ 100', 540, 760);
+
+    ctx.fillStyle = '#F4EFE0';
+    ctx.font = 'italic 700 46px "Playfair Display", serif';
+    ctx.fillText(data.rank, 540, 850);
+
+    const stats = [
+      ['Portamento', data.scoopCount],
+      ['Vibrato', data.vibratoCount],
+      ['Max Combo', data.maxCombo],
+    ];
+    const statY = 1000;
+    const spacing = 300;
+    const startX = 540 - spacing;
+    stats.forEach((s, i) => {
+      const x = startX + i * spacing;
+      ctx.fillStyle = '#8b8f9e';
+      ctx.font = '22px "IBM Plex Mono", monospace';
+      ctx.fillText(s[0], x, statY);
+      ctx.fillStyle = '#F4EFE0';
+      ctx.font = '700 40px "IBM Plex Mono", monospace';
+      ctx.fillText(String(s[1]), x, statY + 50);
+    });
+
+    ctx.fillStyle = '#565b6e';
+    ctx.font = '22px "Work Sans", sans-serif';
+    ctx.fillText('Sotto le Luci — Personal Karaoke', 540, 1280);
+
+    return cv;
+  }
+
+  function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    const words = text.split(' ');
+    let line = '';
+    const lines = [];
+    for (const w of words) {
+      const test = line ? line + ' ' + w : w;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        lines.push(line);
+        line = w;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+    const startY = y - ((lines.length - 1) * lineHeight) / 2;
+    lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
+  }
+
+  document.getElementById('shareCardBtn').addEventListener('click', async () => {
+    if (!lastFinalScoreData) return;
+    const cv = drawShareCard(lastFinalScoreData);
+    cv.toBlob(async (blob) => {
+      if (!blob) return;
+      const file = new File([blob], 'karaoke-score.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: lastFinalScoreData.songTitle });
+          return;
+        } catch (e) { /* ユーザーがキャンセルした場合など */ }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'karaoke-score.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
   });
 
   scoreToggle.addEventListener('click', () => {
