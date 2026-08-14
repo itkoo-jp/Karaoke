@@ -192,12 +192,12 @@
 <body>
 
   <div class="eyebrow">PERSONAL KARAOKE STUDIO</div>
-  <h1 id="songTitle">曲名未設定</h1>
+  <h1 id="songTitle">Sotto le Luci</h1>
   <div id="artistName" style="text-align:center; color:#9295a3; font-size:14px; letter-spacing:.05em; margin-top:-8px; margin-bottom:14px;"></div>
   <div class="rule"></div>
 
   <div class="row edit-only">
-    <input type="text" id="songTitleInput" placeholder="曲名" value=""
+    <input type="text" id="songTitleInput" placeholder="曲名" value="Sotto le Luci"
       style="flex:1 1 200px; background:#1D2130; border:1px solid #2c3145; border-radius:10px; padding:12px 14px; font-size:14px; color:#EDE8DD;" />
     <input type="text" id="artistNameInput" placeholder="アーティスト名" value=""
       style="flex:1 1 200px; background:#1D2130; border:1px solid #2c3145; border-radius:10px; padding:12px 14px; font-size:14px; color:#EDE8DD;" />
@@ -1817,7 +1817,8 @@
       analyser.getFloatTimeDomainData(buf);
       const hz = autoCorrelate(buf, audioCtx.sampleRate);
       const t = useTimerMode ? timerCurrent : player.currentTime;
-      const refHz = hzAtTime(t);
+      const rawRefHz = hzAtTime(t);
+      const refHz = rawRefHz ? quantizeToSemitone(rawRefHz) : null;
 
       if (hz > 0 && refHz) {
         liveHz = hz;
