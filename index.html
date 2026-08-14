@@ -1444,6 +1444,23 @@
   let highwayRafId = null;
   let liveDisplayY = null; // ライブピッチのなめらかな追従用
 
+  // マイクの雑音による細かい上下ブレを、前後数フレームの移動平均(対数周波数空間)でならす
+  function smoothPitchPoints(points, radius) {
+    const smoothed = [];
+    for (let i = 0; i < points.length; i++) {
+      let sum = 0, count = 0;
+      for (let j = Math.max(0, i - radius); j <= Math.min(points.length - 1, i + radius); j++) {
+        // 前後のフレームが時間的に近い場合だけ平均に含める(離れたフレームを混ぜない)
+        if (Math.abs(points[j].t - points[i].t) <= 0.15) {
+          sum += Math.log2(points[j].hz);
+          count++;
+        }
+      }
+      smoothed.push({ t: points[i].t, hz: Math.pow(2, sum / count) });
+    }
+    return smoothed;
+  }
+
   function buildNotes(curve, opts) {
     // 無音判定を挟んでも、半音レーンが同じで間隔が短ければ同じ音として繋げる
     // (DAMのように、こまごまとした断片ではなく、まとまった長いバーにするため)
@@ -1630,12 +1647,13 @@
     hctx.lineWidth = 1;
     hctx.beginPath(); hctx.moveTo(px, 0); hctx.lineTo(px, h); hctx.stroke();
 
-    // 歌った音程の軌跡(お手本のノートと同じ合併ロジックでバー化して表示)
+    // 歌った音程の軌跡(ノイズによる細かいブレをならしてから、お手本と同じ合併ロジックでバー化)
     if (sungTrail.length > 0) {
       const windowPoints = sungTrail
         .filter(s => s.t >= winStart - 0.3 && s.t <= winEnd)
         .map(s => ({ t: s.t, hz: s.hz }));
-      const trailBars = buildNotes(windowPoints, { gapTol: 0.4, mergeShort: 0.3, pitchTol: 4 });
+      const smoothedPoints = smoothPitchPoints(windowPoints, 3);
+      const trailBars = buildNotes(smoothedPoints, { gapTol: 0.4, mergeShort: 0.3, pitchTol: 4 });
       for (const bar of trailBars) {
         if (bar.end < winStart || bar.start > winEnd) continue;
         const x1 = (bar.start - winStart) * pxPerSec;
@@ -1782,7 +1800,13 @@
 
   async function startScoring() {
     try {
-      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        }
+      });
     } catch (err) {
       errorMsg.textContent = 'マイクへのアクセスが許可されませんでした';
       errorMsg.style.display = 'block';
