@@ -1298,6 +1298,10 @@
   // ==================== 音の演出(効果音・観客の環境音) ====================
   let sfxCtx = null;
   function getSfxCtx() {
+    // 採点中はマイク解析用のAudioContextをそのまま使う
+    // (別のAudioContextを同時に動かすと、iOS側の自動音量調整と干渉し、
+    //  楽曲の音量が上下してしまうことがあるため、極力1つにまとめる)
+    if (audioCtx && audioCtx.state !== 'closed') return audioCtx;
     if (!sfxCtx) sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
     return sfxCtx;
   }
@@ -1440,11 +1444,11 @@
   let highwayRafId = null;
   let liveDisplayY = null; // ライブピッチのなめらかな追従用
 
-  function buildNotes(curve) {
+  function buildNotes(curve, opts) {
     // 無音判定を挟んでも、半音レーンが同じで間隔が短ければ同じ音として繋げる
     // (DAMのように、こまごまとした断片ではなく、まとまった長いバーにするため)
-    const GAP_TOL = 0.24; // これ以下の途切れは同じ音とみなす(秒)
-    const MERGE_SHORT = 0.18; // これより短い断片は、削除せず近い方の隣のノートに吸収する(秒)
+    const GAP_TOL = (opts && opts.gapTol) || 0.24; // これ以下の途切れは同じ音とみなす(秒)
+    const MERGE_SHORT = (opts && opts.mergeShort) || 0.18; // これより短い断片は、削除せず近い方の隣のノートに吸収する(秒)
 
     const voiced = curve.filter(p => p.hz);
     let notes = [];
@@ -1460,9 +1464,9 @@
     }
     if (cur) notes.push(cur);
 
-    // 短い断片は消さずに、音程が近い(3半音以内)隣のノートへ吸収してつなげる。
+    // 短い断片は消さずに、音程が近い隣のノートへ吸収してつなげる。
     // 明らかに音程が違う場合は、短くても別の音として残す。
-    const PITCH_MERGE_TOL = 3; // 半音
+    const PITCH_MERGE_TOL = (opts && opts.pitchTol) || 3; // 半音
     let changed = true;
     let safety = 0;
     while (changed && safety < notes.length * 3 + 10) {
@@ -1631,7 +1635,7 @@
       const windowPoints = sungTrail
         .filter(s => s.t >= winStart - 0.3 && s.t <= winEnd)
         .map(s => ({ t: s.t, hz: s.hz }));
-      const trailBars = buildNotes(windowPoints);
+      const trailBars = buildNotes(windowPoints, { gapTol: 0.4, mergeShort: 0.3, pitchTol: 4 });
       for (const bar of trailBars) {
         if (bar.end < winStart || bar.start > winEnd) continue;
         const x1 = (bar.start - winStart) * pxPerSec;
@@ -1665,18 +1669,6 @@
         hctx.fillText(label, x, y - 12);
       }
       hctx.textAlign = 'start';
-    }
-
-    // 自分の声(ライブピッチ)をプレイヘッド上に強調表示(半音レーンにスナップ+なめらかに追従)
-    if (scoring && liveHz > 0) {
-      const targetY = hzToYPadded(quantizeToSemitone(liveHz), h);
-      liveDisplayY = (liveDisplayY === null) ? targetY : liveDisplayY + (targetY - liveDisplayY) * 0.3;
-      hctx.fillStyle = '#e08a7a';
-      hctx.beginPath();
-      hctx.arc(px, liveDisplayY, 6, 0, Math.PI * 2);
-      hctx.fill();
-    } else {
-      liveDisplayY = null;
     }
 
     highwayRafId = requestAnimationFrame(drawHighway);
