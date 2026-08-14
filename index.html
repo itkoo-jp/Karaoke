@@ -1616,15 +1616,23 @@
     hctx.lineWidth = 1;
     hctx.beginPath(); hctx.moveTo(px, 0); hctx.lineTo(px, h); hctx.stroke();
 
-    // 歌った音程の軌跡(過去に発声した分もウィンドウ内なら残して表示、半音レーンにスナップ)
+    // 歌った音程の軌跡(お手本のノートと同じ合併ロジックでバー化して表示)
     if (sungTrail.length > 0) {
-      for (const s of sungTrail) {
-        if (s.t < winStart || s.t > winEnd) continue;
-        const x = (s.t - winStart) * pxPerSec;
-        const y = hzToY(quantizeToSemitone(s.hz), h);
-        hctx.fillStyle = s.ok ? 'rgba(224,138,122,0.85)' : 'rgba(224,138,122,0.35)';
+      const windowPoints = sungTrail
+        .filter(s => s.t >= winStart - 0.3 && s.t <= winEnd)
+        .map(s => ({ t: s.t, hz: s.hz }));
+      const trailBars = buildNotes(windowPoints);
+      for (const bar of trailBars) {
+        if (bar.end < winStart || bar.start > winEnd) continue;
+        const x1 = (bar.start - winStart) * pxPerSec;
+        const x2 = (bar.end - winStart) * pxPerSec;
+        const y = hzToY(quantizeToSemitone(bar.hz), h);
+        const rawRef = hzAtTime((bar.start + bar.end) / 2);
+        const refQ = rawRef ? quantizeToSemitone(rawRef) : null;
+        const ok = refQ ? Math.abs(hzToCents(bar.hz, refQ)) < 65 : false;
+        hctx.fillStyle = ok ? 'rgba(224,138,122,0.9)' : 'rgba(224,138,122,0.4)';
         hctx.beginPath();
-        hctx.arc(x, y, 3, 0, Math.PI * 2);
+        hctx.roundRect ? hctx.roundRect(x1, y - 4, Math.max(3, x2 - x1), 8, 4) : hctx.rect(x1, y - 4, Math.max(3, x2 - x1), 8);
         hctx.fill();
       }
     }
@@ -1824,7 +1832,7 @@
         liveHz = hz;
         const cents = hzToCents(hz, refHz);
         const clamped = Math.max(-100, Math.min(100, cents));
-        const ok = Math.abs(cents) < 50;
+        const ok = Math.abs(cents) < 65;
         pitchMeter.style.width = (50 + clamped / 2) + '%';
         pitchMeter.style.background = ok ? '#C9A227' : '#e08a7a';
         const frameScore = Math.max(0, 100 - Math.abs(cents));
