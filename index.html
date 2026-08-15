@@ -1652,10 +1652,12 @@
       const windowPoints = sungTrail
         .filter(s => s.t >= winStart - 0.3 && s.t <= winEnd)
         .map(s => ({ t: s.t, hz: s.hz }));
-      const smoothedPoints = smoothPitchPoints(windowPoints, 3);
-      const trailBars = buildNotes(smoothedPoints, { gapTol: 0.4, mergeShort: 0.3, pitchTol: 4 });
+      const smoothedPoints = smoothPitchPoints(windowPoints, 5);
+      const trailBars = buildNotes(smoothedPoints, { gapTol: 0.45, mergeShort: 0.35, pitchTol: 5 });
+      const MIN_VISIBLE_DUR = 0.08; // 単独では合併できない極端に短いノイズは表示しない
       for (const bar of trailBars) {
         if (bar.end < winStart || bar.start > winEnd) continue;
+        if ((bar.end - bar.start) < MIN_VISIBLE_DUR) continue;
         const x1 = (bar.start - winStart) * pxPerSec;
         const x2 = (bar.end - winStart) * pxPerSec;
         const y = hzToY(quantizeToSemitone(bar.hz), h);
@@ -1664,7 +1666,7 @@
         const ok = refQ ? Math.abs(hzToCents(bar.hz, refQ)) < 65 : false;
         hctx.fillStyle = ok ? 'rgba(224,138,122,0.9)' : 'rgba(224,138,122,0.4)';
         hctx.beginPath();
-        hctx.roundRect ? hctx.roundRect(x1, y - 4, Math.max(3, x2 - x1), 8, 4) : hctx.rect(x1, y - 4, Math.max(3, x2 - x1), 8);
+        hctx.roundRect ? hctx.roundRect(x1, y - 5, Math.max(2, x2 - x1), 10, 5) : hctx.rect(x1, y - 5, Math.max(2, x2 - x1), 10);
         hctx.fill();
       }
     }
