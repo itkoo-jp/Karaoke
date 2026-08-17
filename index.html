@@ -191,6 +191,8 @@
 </head>
 <body>
 
+<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.17-1</div>
+
   <div class="eyebrow">PERSONAL KARAOKE STUDIO</div>
   <h1 id="songTitle">Sotto le Luci</h1>
   <div id="artistName" style="text-align:center; color:#9295a3; font-size:14px; letter-spacing:.05em; margin-top:-8px; margin-bottom:14px;"></div>
@@ -1358,7 +1360,7 @@
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass'; filter.frequency.value = 700;
     const gain = ctx.createGain();
-    gain.gain.value = 0.015;
+    gain.gain.value = 0.025;
     noise.connect(filter).connect(gain).connect(ctx.destination);
     noise.start();
     ambience = { noise, gain };
@@ -1806,6 +1808,15 @@
   }
 
   async function startScoring() {
+    // iOSの自動再生ブロック対策: ボタンを押した直後、await(マイク許可待ち)より前の
+    // 同期処理の中でAudioContextを作成・再開しておくことで、確実にユーザー操作と紐付ける
+    if (!audioCtx || audioCtx.state === 'closed') {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+
     try {
       micStream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -1824,7 +1835,6 @@
       errorMsg.style.display = 'block';
       return;
     }
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') {
       try { await audioCtx.resume(); } catch (e) {}
     }
