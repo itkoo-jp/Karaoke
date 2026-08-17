@@ -191,7 +191,7 @@
 </head>
 <body>
 
-<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.17-2</div>
+<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.17-3</div>
 
   <div class="eyebrow">PERSONAL KARAOKE STUDIO</div>
   <h1 id="songTitle">Sotto le Luci</h1>
@@ -1349,26 +1349,56 @@
 
   // 観客のざわめき(マイクには一切触れず、独立した環境音を裏で鳴らすだけなのでハウリングの心配がない)
   let ambience = null;
+  function playApplauseBurst() {
+    const ctx = getSfxCtx();
+    const dur = 0.9 + Math.random() * 0.6;
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass'; filter.frequency.value = 2400; filter.Q.value = 0.6;
+    const gain = ctx.createGain();
+    const t0 = ctx.currentTime;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.22, t0 + 0.2);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.start(t0); src.stop(t0 + dur);
+  }
+
+  let ambienceBurstTimer = null;
   function startCrowdAmbience() {
     if (ambience) return;
     const ctx = getSfxCtx();
+    // 常時流れる、人混みのどよめき(bed)
     const buffer = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.6;
     const noise = ctx.createBufferSource();
     noise.buffer = buffer; noise.loop = true;
     const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass'; filter.frequency.value = 700;
+    filter.type = 'bandpass'; filter.frequency.value = 550; filter.Q.value = 0.4;
     const gain = ctx.createGain();
-    gain.gain.value = 0.09;
+    gain.gain.value = 0.06;
     noise.connect(filter).connect(gain).connect(ctx.destination);
     noise.start();
     ambience = { noise, gain };
+
+    // 数秒おきに波のように拍手・歓声が起こる
+    const scheduleBurst = () => {
+      if (!ambience) return;
+      playApplauseBurst();
+      ambienceBurstTimer = setTimeout(scheduleBurst, 3500 + Math.random() * 4500);
+    };
+    ambienceBurstTimer = setTimeout(scheduleBurst, 1800);
   }
   function stopCrowdAmbience() {
     if (!ambience) return;
     try { ambience.noise.stop(); } catch (e) {}
     ambience = null;
+    clearTimeout(ambienceBurstTimer);
   }
 
   let venueEffectOn = false;
