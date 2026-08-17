@@ -1301,9 +1301,14 @@
     // 採点中はマイク解析用のAudioContextをそのまま使う
     // (別のAudioContextを同時に動かすと、iOS側の自動音量調整と干渉し、
     //  楽曲の音量が上下してしまうことがあるため、極力1つにまとめる)
-    if (audioCtx && audioCtx.state !== 'closed') return audioCtx;
-    if (!sfxCtx) sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
-    return sfxCtx;
+    let ctx;
+    if (audioCtx && audioCtx.state !== 'closed') ctx = audioCtx;
+    else {
+      if (!sfxCtx) sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
+      ctx = sfxCtx;
+    }
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    return ctx;
   }
 
   function playComboPop() {
@@ -1315,7 +1320,7 @@
     osc.frequency.setValueAtTime(880, t0);
     osc.frequency.exponentialRampToValueAtTime(1568, t0 + 0.09);
     gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.exponentialRampToValueAtTime(0.22, t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.12, t0 + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
     osc.connect(gain).connect(ctx.destination);
     osc.start(t0); osc.stop(t0 + 0.2);
@@ -1353,7 +1358,7 @@
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass'; filter.frequency.value = 700;
     const gain = ctx.createGain();
-    gain.gain.value = 0.04;
+    gain.gain.value = 0.015;
     noise.connect(filter).connect(gain).connect(ctx.destination);
     noise.start();
     ambience = { noise, gain };
@@ -1820,6 +1825,9 @@
       return;
     }
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') {
+      try { await audioCtx.resume(); } catch (e) {}
+    }
     const source = audioCtx.createMediaStreamSource(micStream);
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 2048;
