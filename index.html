@@ -191,7 +191,7 @@
 </head>
 <body>
 
-<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.17-3</div>
+<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.17-4</div>
 
   <div class="eyebrow">PERSONAL KARAOKE STUDIO</div>
   <h1 id="songTitle">Sotto le Luci</h1>
@@ -1349,42 +1349,122 @@
 
   // 観客のざわめき(マイクには一切触れず、独立した環境音を裏で鳴らすだけなのでハウリングの心配がない)
   let ambience = null;
-  function playApplauseBurst() {
-    const ctx = getSfxCtx();
-    const dur = 0.9 + Math.random() * 0.6;
+  let clapBufferCache = null;
+
+  function getClapBuffer(ctx) {
+    if (clapBufferCache) return clapBufferCache;
+    // 1粒の「パチッ」という音(短い減衰ノイズ)を1つだけ作って使い回す
+    const dur = 0.02;
     const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
     const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
+    for (let i = 0; i < data.length; i++) {
+      const decay = Math.pow(1 - i / data.length, 2);
+      data[i] = (Math.random() * 2 - 1) * decay;
+    }
+    clapBufferCache = buffer;
+    return buffer;
+  }
+
+  // 「ウォーン」と伸びる歓声風の声(距離感のあるピッチベンド)
+  function playWhoop(startTime) {
+    const ctx = getSfxCtx();
+    const dur = 0.7 + Math.random() * 0.5;
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    const baseFreq = 220 + Math.random() * 160;
+    osc.frequency.setValueAtTime(baseFreq, startTime);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.7, startTime + dur * 0.55);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.2, startTime + dur);
+
     const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass'; filter.frequency.value = 2400; filter.Q.value = 0.6;
+    filter.type = 'lowpass';
+    filter.frequency.value = 1400;
+
     const gain = ctx.createGain();
-    const t0 = ctx.currentTime;
-    gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.exponentialRampToValueAtTime(0.22, t0 + 0.2);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    src.connect(filter).connect(gain).connect(ctx.destination);
-    src.start(t0); src.stop(t0 + dur);
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.05, startTime + dur * 0.3);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+
+    osc.connect(filter).connect(gain).connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + dur);
+  }
+
+  // 何百もの小さなクリック音を、タイミング・音程をランダムにずらして重ねることで
+  // 本物の拍手のような「パラパラ...ザザザ...」という質感を作る
+  function playApplauseBurst() {
+    const ctx = getSfxCtx();
+    const now = ctx.currentTime;
+    const clapBuf = getClapBuffer(ctx);
+
+    const totalDur = 2.0 + Math.random() * 1.0;
+    const peakT = totalDur * (0.22 + Math.random() * 0.15); // 立ち上がりは速く
+    const clapCount = 160 + Math.floor(Math.random() * 120);
+
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.55, now + peakT);
+    master.gain.exponentialRampToValueAtTime(0.001, now + totalDur);
+    master.connect(ctx.destination);
+
+    for (let i = 0; i < clapCount; i++) {
+      // 立ち上がりは密集、後半は間延びしていく分布でタイミングを決める
+      const r = Math.random();
+      const t = r < 0.55
+        ? peakT * Math.pow(r / 0.55, 0.7)
+        : peakT + (totalDur - peakT) * Math.pow((r - 0.55) / 0.45, 1.6);
+
+      const src = ctx.createBufferSource();
+      src.buffer = clapBuf;
+      src.playbackRate.value = 0.7 + Math.random() * 1.1;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 1000 + Math.random() * 2800;
+      filter.Q.value = 0.6 + Math.random() * 0.8;
+
+      const g = ctx.createGain();
+      g.gain.value = 0.4 + Math.random() * 0.6;
+
+      src.connect(filter).connect(g).connect(master);
+      src.start(now + t);
+    }
+
+    // 拍手に混ぜて、1〜2人分の歓声を乗せる
+    const whoopCount = Math.random() < 0.55 ? 1 : 2;
+    for (let i = 0; i < whoopCount; i++) {
+      playWhoop(now + peakT * (0.4 + Math.random() * 0.7));
+    }
   }
 
   let ambienceBurstTimer = null;
+  let ambienceLfoId = null;
   function startCrowdAmbience() {
     if (ambience) return;
     const ctx = getSfxCtx();
-    // 常時流れる、人混みのどよめき(bed)
+    // 常時流れる、人混みのざわめき(bed)。フィルターの周波数をゆっくり揺らして
+    // 単調な「サー」ではなく、人が動き回っているような質感にする
     const buffer = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate);
     const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.6;
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.7;
     const noise = ctx.createBufferSource();
     noise.buffer = buffer; noise.loop = true;
     const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass'; filter.frequency.value = 550; filter.Q.value = 0.4;
+    filter.type = 'bandpass'; filter.frequency.value = 500; filter.Q.value = 0.5;
     const gain = ctx.createGain();
-    gain.gain.value = 0.06;
+    gain.gain.value = 0.05;
     noise.connect(filter).connect(gain).connect(ctx.destination);
     noise.start();
-    ambience = { noise, gain };
+    ambience = { noise, gain, filter };
+
+    let lfoPhase = 0;
+    const lfoTick = () => {
+      if (!ambience) return;
+      lfoPhase += 0.02;
+      ambience.filter.frequency.value = 450 + Math.sin(lfoPhase) * 150 + Math.sin(lfoPhase * 2.7) * 60;
+      ambienceLfoId = requestAnimationFrame(lfoTick);
+    };
+    ambienceLfoId = requestAnimationFrame(lfoTick);
 
     // 数秒おきに波のように拍手・歓声が起こる
     const scheduleBurst = () => {
@@ -1392,13 +1472,14 @@
       playApplauseBurst();
       ambienceBurstTimer = setTimeout(scheduleBurst, 3500 + Math.random() * 4500);
     };
-    ambienceBurstTimer = setTimeout(scheduleBurst, 1800);
+    ambienceBurstTimer = setTimeout(scheduleBurst, 1200);
   }
   function stopCrowdAmbience() {
     if (!ambience) return;
     try { ambience.noise.stop(); } catch (e) {}
     ambience = null;
     clearTimeout(ambienceBurstTimer);
+    cancelAnimationFrame(ambienceLfoId);
   }
 
   let venueEffectOn = false;
