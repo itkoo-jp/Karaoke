@@ -191,7 +191,7 @@
 </head>
 <body>
 
-<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.17-1</div>
+<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.17-2</div>
 
   <div class="eyebrow">PERSONAL KARAOKE STUDIO</div>
   <h1 id="songTitle">Sotto le Luci</h1>
@@ -1360,7 +1360,7 @@
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass'; filter.frequency.value = 700;
     const gain = ctx.createGain();
-    gain.gain.value = 0.025;
+    gain.gain.value = 0.09;
     noise.connect(filter).connect(gain).connect(ctx.destination);
     noise.start();
     ambience = { noise, gain };
