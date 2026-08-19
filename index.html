@@ -192,7 +192,7 @@
 <body>
 
 <div id="lobbyBgmToggle" class="edit-only" style="position:fixed; bottom:24px; right:8px; z-index:2; background:#1D2130; color:#565b6e; border:1px solid #2c3145; border-radius:999px; padding:4px 10px; font-size:10px; font-weight:600; cursor:pointer;">🎵 BGM: OFF</div>
-<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.17-5</div>
+<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.17-6</div>
 
   <div class="eyebrow">PERSONAL KARAOKE STUDIO</div>
   <h1 id="songTitle">Sotto le Luci</h1>
@@ -239,8 +239,7 @@
   </div>
 
   <div style="text-align:center;" class="edit-only">
-    <div id="festaToggle" style="display:inline-block; background:#1D2130; color:#e08a7a; border:1px solid #e08a7a; border-radius:999px; padding:9px 18px; font-size:13px; font-weight:700; cursor:pointer; margin-bottom:8px; margin-right:6px;">🎉 祭りモード: OFF</div>
-    <div id="venueToggle" style="display:inline-block; background:#1D2130; color:#7ec4e8; border:1px solid #7ec4e8; border-radius:999px; padding:9px 18px; font-size:13px; font-weight:700; cursor:pointer; margin-bottom:14px;">🎤 会場エフェクト: OFF</div>
+    <div id="festaToggle" style="display:inline-block; background:#1D2130; color:#e08a7a; border:1px solid #e08a7a; border-radius:999px; padding:9px 18px; font-size:13px; font-weight:700; cursor:pointer; margin-bottom:14px;">🎉 祭りモード: OFF</div>
   </div>
 
   <div style="text-align:center; margin-bottom:16px;" class="edit-only">
@@ -1385,7 +1384,9 @@
     if (buffers.length === 0) return;
     outroPlaying = true;
     outroGain = lobbyBgmCtx.createGain();
-    outroGain.gain.value = 0.45;
+    const now = lobbyBgmCtx.currentTime;
+    outroGain.gain.setValueAtTime(0, now);
+    outroGain.gain.linearRampToValueAtTime(0.45, now + 1.6);
     outroGain.connect(lobbyBgmCtx.destination);
     const pick = buffers[Math.floor(Math.random() * buffers.length)];
     scheduleCrossfadeLoop(
@@ -1411,10 +1412,12 @@
   lobbyBgmToggle.addEventListener('click', async () => {
     if (lobbyBgmPlaying) {
       stopLobbyBgm();
+      lobbyBgmUserStopped = true;
       lobbyBgmToggle.textContent = '🎵 BGM: OFF';
       lobbyBgmToggle.style.background = '#1D2130';
       lobbyBgmToggle.style.color = '#565b6e';
     } else {
+      lobbyBgmUserStopped = false;
       lobbyBgmToggle.textContent = '🎵 …';
       await startLobbyBgm();
       lobbyBgmToggle.textContent = '🎵 BGM: ON';
@@ -1424,13 +1427,8 @@
   });
 
   // ページを開いたら自動再生を試みる。ブラウザにブロックされた場合は、
-  // 最初にどこかをタップ/クリックした瞬間に自動で始める(手動でOFFにした場合は再度始めない)
+  // 最初にどこかをタップ/クリックした瞬間に自動で始める(ユーザーが手動でOFFにした場合は再度始めない)
   let lobbyBgmUserStopped = false;
-  const origStop = stopLobbyBgm;
-  stopLobbyBgm = function () {
-    lobbyBgmUserStopped = true;
-    origStop();
-  };
 
   async function tryAutoStartLobbyBgm() {
     if (lobbyBgmPlaying || lobbyBgmUserStopped || document.body.classList.contains('perform-mode')) return;
@@ -1488,6 +1486,7 @@
       if (player.src) player.pause();
       if (scoring) stopScoring();
       stopOutroAmbience();
+      tryAutoStartLobbyBgm();
     }
   });
 
@@ -1574,184 +1573,6 @@
     osc.start(t0); osc.stop(t0 + 0.2);
   }
 
-  function playCheer() {
-    const ctx = getSfxCtx();
-    const dur = 1.6;
-    const buffer = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass'; filter.frequency.value = 1600; filter.Q.value = 0.5;
-    const gain = ctx.createGain();
-    const t0 = ctx.currentTime;
-    gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.exponentialRampToValueAtTime(0.28, t0 + 0.2);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    noise.connect(filter).connect(gain).connect(ctx.destination);
-    noise.start(t0); noise.stop(t0 + dur);
-  }
-
-  // 観客のざわめき(マイクには一切触れず、独立した環境音を裏で鳴らすだけなのでハウリングの心配がない)
-  let ambience = null;
-  let clapBufferPool = null;
-
-  function getClapBufferPool(ctx) {
-    if (clapBufferPool) return clapBufferPool;
-    // 1つの音を使い回すと、同じ波形パターンが重なって「ジャラジャラ」という
-    // 不自然な金属的な響きになるため、互いに無関係な粒を複数用意してランダムに選ぶ
-    clapBufferPool = [];
-    for (let n = 0; n < 10; n++) {
-      const dur = 0.012 + Math.random() * 0.018;
-      const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      const attackLen = Math.floor(data.length * 0.08);
-      for (let i = 0; i < data.length; i++) {
-        const attack = i < attackLen ? i / attackLen : 1;
-        const decay = Math.pow(1 - (i - attackLen) / (data.length - attackLen), 1.7);
-        data[i] = (Math.random() * 2 - 1) * attack * Math.max(0, decay);
-      }
-      clapBufferPool.push(buffer);
-    }
-    return clapBufferPool;
-  }
-
-  // 「ウォーン」と伸びる歓声風の声(距離感のあるピッチベンド)
-  function playWhoop(startTime) {
-    const ctx = getSfxCtx();
-    const dur = 0.7 + Math.random() * 0.5;
-    const osc = ctx.createOscillator();
-    osc.type = 'sawtooth';
-    const baseFreq = 220 + Math.random() * 160;
-    osc.frequency.setValueAtTime(baseFreq, startTime);
-    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.7, startTime + dur * 0.55);
-    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.2, startTime + dur);
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 1400;
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, startTime);
-    gain.gain.exponentialRampToValueAtTime(0.05, startTime + dur * 0.3);
-    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
-
-    osc.connect(filter).connect(gain).connect(ctx.destination);
-    osc.start(startTime);
-    osc.stop(startTime + dur);
-  }
-
-  // 何百もの独立したクリック粒を、タイミング・音色・左右の位置をランダムにずらして重ねることで
-  // 本物の拍手のような「パラパラ...ザザザ...」という質感を作る(粒を使い回すと金属的な響きになるため避ける)
-  function playApplauseBurst() {
-    const ctx = getSfxCtx();
-    const now = ctx.currentTime;
-    const pool = getClapBufferPool(ctx);
-    const canPan = typeof ctx.createStereoPanner === 'function';
-
-    const totalDur = 2.0 + Math.random() * 1.0;
-    const peakT = totalDur * (0.22 + Math.random() * 0.15); // 立ち上がりは速く
-    const clapCount = 140 + Math.floor(Math.random() * 100);
-
-    const master = ctx.createGain();
-    master.gain.setValueAtTime(0.0001, now);
-    master.gain.exponentialRampToValueAtTime(0.5, now + peakT);
-    master.gain.exponentialRampToValueAtTime(0.001, now + totalDur);
-    master.connect(ctx.destination);
-
-    for (let i = 0; i < clapCount; i++) {
-      // 立ち上がりは密集、後半は間延びしていく分布でタイミングを決める
-      const r = Math.random();
-      const t = r < 0.55
-        ? peakT * Math.pow(r / 0.55, 0.7)
-        : peakT + (totalDur - peakT) * Math.pow((r - 0.55) / 0.45, 1.6);
-
-      const src = ctx.createBufferSource();
-      src.buffer = pool[Math.floor(Math.random() * pool.length)];
-      src.playbackRate.value = 0.94 + Math.random() * 0.12; // ごくわずかな揺らぎ程度に留める
-
-      // 狭い帯域で強調すると耳障りな金属質になるため、広めのゆるいフィルターにする
-      const hp = ctx.createBiquadFilter();
-      hp.type = 'highpass'; hp.frequency.value = 500;
-      const lp = ctx.createBiquadFilter();
-      lp.type = 'lowpass'; lp.frequency.value = 3800 + Math.random() * 1500;
-
-      const g = ctx.createGain();
-      g.gain.value = 0.35 + Math.random() * 0.5;
-
-      let node = src.connect ? src : src; // (no-op, keep chain readable)
-      if (canPan) {
-        const pan = ctx.createStereoPanner();
-        pan.pan.value = (Math.random() - 0.5) * 1.6;
-        src.connect(hp).connect(lp).connect(g).connect(pan).connect(master);
-      } else {
-        src.connect(hp).connect(lp).connect(g).connect(master);
-      }
-      src.start(now + t);
-    }
-
-    // 拍手に混ぜて、1〜2人分の歓声を乗せる
-    const whoopCount = Math.random() < 0.55 ? 1 : 2;
-    for (let i = 0; i < whoopCount; i++) {
-      playWhoop(now + peakT * (0.4 + Math.random() * 0.7));
-    }
-  }
-
-  let ambienceBurstTimer = null;
-  let ambienceLfoId = null;
-  function startCrowdAmbience() {
-    if (ambience) return;
-    const ctx = getSfxCtx();
-    // 常時流れる、人混みのざわめき(bed)。フィルターの周波数をゆっくり揺らして
-    // 単調な「サー」ではなく、人が動き回っているような質感にする
-    const buffer = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.7;
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer; noise.loop = true;
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass'; filter.frequency.value = 500; filter.Q.value = 0.5;
-    const gain = ctx.createGain();
-    gain.gain.value = 0.05;
-    noise.connect(filter).connect(gain).connect(ctx.destination);
-    noise.start();
-    ambience = { noise, gain, filter };
-
-    let lfoPhase = 0;
-    const lfoTick = () => {
-      if (!ambience) return;
-      lfoPhase += 0.02;
-      ambience.filter.frequency.value = 450 + Math.sin(lfoPhase) * 150 + Math.sin(lfoPhase * 2.7) * 60;
-      ambienceLfoId = requestAnimationFrame(lfoTick);
-    };
-    ambienceLfoId = requestAnimationFrame(lfoTick);
-
-    // 数秒おきに波のように拍手・歓声が起こる
-    const scheduleBurst = () => {
-      if (!ambience) return;
-      playApplauseBurst();
-      ambienceBurstTimer = setTimeout(scheduleBurst, 3500 + Math.random() * 4500);
-    };
-    ambienceBurstTimer = setTimeout(scheduleBurst, 1200);
-  }
-  function stopCrowdAmbience() {
-    if (!ambience) return;
-    try { ambience.noise.stop(); } catch (e) {}
-    ambience = null;
-    clearTimeout(ambienceBurstTimer);
-    cancelAnimationFrame(ambienceLfoId);
-  }
-
-  let venueEffectOn = false;
-  const venueToggle = document.getElementById('venueToggle');
-  venueToggle.addEventListener('click', () => {
-    venueEffectOn = !venueEffectOn;
-    venueToggle.textContent = venueEffectOn ? '🎤 会場エフェクト: ON' : '🎤 会場エフェクト: OFF';
-    venueToggle.style.background = venueEffectOn ? '#7ec4e8' : '#1D2130';
-    venueToggle.style.color = venueEffectOn ? '#14171f' : '#7ec4e8';
-    if (!venueEffectOn) stopCrowdAmbience();
-  });
 
   // ステージの雰囲気(背景テーマ)選択
   const themeDots = document.querySelectorAll('.theme-dot');
@@ -2236,7 +2057,6 @@
     vibratoCountEl.textContent = '0';
     scorePanel.style.display = 'block';
     comboDisplay.style.display = festaMode ? 'block' : 'none';
-    if (venueEffectOn) startCrowdAmbience();
     finalScoreBox.style.display = 'none';
     scoreToggle.textContent = '採点ストップ';
     scoreToggle.classList.add('active');
@@ -2412,7 +2232,7 @@
       window.scrollTo(0, 0);
       finalScoreBox.style.display = 'flex';
       animateScoreCountUp(total, 1100);
-      if (total >= 85) { setTimeout(launchConfetti, 200); playCheer(); }
+      if (total >= 85) { setTimeout(launchConfetti, 200); }
 
       lastFinalScoreData = {
         total, scoopCount, vibratoCount, dynamicsRange, maxCombo,
@@ -2431,7 +2251,6 @@
     }
     comboDisplay.style.display = 'none';
     comboCelebration.style.display = 'none';
-    stopCrowdAmbience();
   }
 
   document.getElementById('closeFinalScore').addEventListener('click', () => {
