@@ -1132,6 +1132,7 @@
       stopScoring();
     }
     stopInterludeAmbience();
+    outroStartedForThisSong = true;
     startOutroAmbience();
   });
 
@@ -1413,6 +1414,8 @@
   let interludeList = [];
   let interludeCurrentIndex = -1;
   let interludeAmbience = null;
+  let vocalEndTime = null;
+  let outroStartedForThisSong = false;
 
   function buildInterludeList() {
     interludeList = [];
@@ -1426,6 +1429,16 @@
         interludeList.push({ fadeInAt: lineEnd + 1.0, fadeOutAt: nextStart - 2.0 });
       }
     }
+    // 歌詞の最後の行が終わる時刻(=歌声が終わるタイミング)を計算しておく
+    if (lines.length > 0) {
+      const last = lines[lines.length - 1];
+      vocalEndTime = (last.wordTimes && last.wordTimes.length > 0)
+        ? last.wordTimes[last.wordTimes.length - 1].time + 1.5
+        : last.time + 3.0;
+    } else {
+      vocalEndTime = null;
+    }
+    outroStartedForThisSong = false;
   }
 
   async function startInterludeAmbience() {
@@ -1460,6 +1473,17 @@
 
   function checkInterludeAt(t) {
     if (!document.body.classList.contains('perform-mode')) return;
+
+    // 歌声が終わったタイミングでアウトロ演出を開始する(曲そのものの終了を待たない)
+    if (vocalEndTime !== null && t >= vocalEndTime && !outroStartedForThisSong) {
+      outroStartedForThisSong = true;
+      interludeCurrentIndex = -1;
+      stopInterludeAmbience();
+      startOutroAmbience();
+      return;
+    }
+    if (outroStartedForThisSong) return; // アウトロが始まったら間奏演出の判定はしない
+
     const idx = interludeList.findIndex(iv => t >= iv.fadeInAt && t < iv.fadeOutAt);
     if (idx !== -1 && interludeCurrentIndex !== idx) {
       interludeCurrentIndex = idx;
