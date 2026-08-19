@@ -192,7 +192,7 @@
 <body>
 
 <div id="lobbyBgmToggle" class="edit-only" style="position:fixed; bottom:24px; right:8px; z-index:2; background:#1D2130; color:#565b6e; border:1px solid #2c3145; border-radius:999px; padding:4px 10px; font-size:10px; font-weight:600; cursor:pointer;">🎵 BGM: OFF</div>
-<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.17-6</div>
+<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.18-2</div>
 
   <div class="eyebrow">PERSONAL KARAOKE STUDIO</div>
   <h1 id="songTitle">Sotto le Luci</h1>
@@ -1131,6 +1131,7 @@
     if (scoring) {
       stopScoring();
     }
+    stopInterludeAmbience();
     startOutroAmbience();
   });
 
@@ -1408,6 +1409,68 @@
     }
   }
 
+  // ---- 長い間奏(歌詞のない区間)を自動検出し、そこだけBGMをフェードイン・フェードアウトする ----
+  let interludeList = [];
+  let interludeCurrentIndex = -1;
+  let interludeAmbience = null;
+
+  function buildInterludeList() {
+    interludeList = [];
+    const GAP_THRESHOLD = 7; // これ以上歌詞が空いたら間奏とみなす(秒)
+    for (let i = 0; i < lines.length - 1; i++) {
+      const lineEnd = (lines[i].wordTimes && lines[i].wordTimes.length > 0)
+        ? lines[i].wordTimes[lines[i].wordTimes.length - 1].time + 1.2
+        : lines[i].time + 3.0;
+      const nextStart = lines[i + 1].time;
+      if (nextStart - lineEnd >= GAP_THRESHOLD) {
+        interludeList.push({ fadeInAt: lineEnd + 1.0, fadeOutAt: nextStart - 2.0 });
+      }
+    }
+  }
+
+  async function startInterludeAmbience() {
+    if (interludeAmbience) return;
+    if (!lobbyBgmCtx) lobbyBgmCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (lobbyBgmCtx.state === 'suspended') { try { await lobbyBgmCtx.resume(); } catch (e) {} }
+    const pool = [...(await decodeOutroBuffers()), ...(await decodeIntroBuffers())];
+    if (pool.length === 0) return;
+    const ctx = lobbyBgmCtx;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 1.8);
+    gain.connect(ctx.destination);
+    const state = { gain, playing: true, timer: null };
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    scheduleCrossfadeLoop(
+      ctx, pick, gain,
+      () => state.playing,
+      (id) => { state.timer = id; }
+    );
+    interludeAmbience = state;
+  }
+
+  function stopInterludeAmbience() {
+    if (!interludeAmbience) return;
+    const ctx = lobbyBgmCtx;
+    interludeAmbience.playing = false;
+    clearTimeout(interludeAmbience.timer);
+    try { interludeAmbience.gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.5); } catch (e) {}
+    interludeAmbience = null;
+  }
+
+  function checkInterludeAt(t) {
+    if (!document.body.classList.contains('perform-mode')) return;
+    const idx = interludeList.findIndex(iv => t >= iv.fadeInAt && t < iv.fadeOutAt);
+    if (idx !== -1 && interludeCurrentIndex !== idx) {
+      interludeCurrentIndex = idx;
+      startInterludeAmbience();
+    } else if (idx === -1 && interludeCurrentIndex !== -1) {
+      interludeCurrentIndex = -1;
+      stopInterludeAmbience();
+    }
+  }
+  player.addEventListener('timeupdate', () => checkInterludeAt(player.currentTime));
+
   const lobbyBgmToggle = document.getElementById('lobbyBgmToggle');
   lobbyBgmToggle.addEventListener('click', async () => {
     if (lobbyBgmPlaying) {
@@ -1465,6 +1528,8 @@
       lobbyBgmToggle.style.background = '#1D2130';
       lobbyBgmToggle.style.color = '#565b6e';
       playIntroSting();
+      buildInterludeList();
+      interludeCurrentIndex = -1;
       // 本番モードに入ったら自動で再生と採点をスタート
       if (player.src) {
         player.currentTime = 0;
@@ -1482,10 +1547,11 @@
         startScoring();
       }
     } else {
-      // 編集画面に戻る際は再生と採点、アウトロ演出を止める
+      // 編集画面に戻る際は再生と採点、アウトロ・間奏演出を止める
       if (player.src) player.pause();
       if (scoring) stopScoring();
       stopOutroAmbience();
+      stopInterludeAmbience();
       tryAutoStartLobbyBgm();
     }
   });
