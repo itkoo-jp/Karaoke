@@ -224,6 +224,10 @@
     <div class="btn-secondary" id="librarySaveBtn" style="flex:1 1 auto;">この曲をライブラリに保存</div>
   </div>
 
+  <div class="row edit-only">
+    <div class="btn-secondary" id="cardAlbumOpenBtn" style="flex:1 1 auto;">🎴 カードアルバムを開く</div>
+  </div>
+
   <div id="libraryModal" style="display:none; position:fixed; inset:0; height:100dvh; z-index:280; align-items:center; justify-content:center; background:rgba(6,7,12,0.9);">
     <div style="width:92%; max-width:480px; height:80vh; display:flex; flex-direction:column; background:#161a26; border:1px solid #2c3145; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,0.6); overflow:hidden;">
       <div style="padding:18px 20px 12px; border-bottom:1px solid #262a3a;">
@@ -409,10 +413,30 @@
           <div id="finalMaxCombo" style="font-family:'IBM Plex Mono',monospace; font-size:20px; color:#c7cad6;">0</div>
         </div>
       </div>
+
+      <div id="obtainedCardBox" style="display:none; margin-bottom:20px; padding-top:16px; border-top:1px solid #2c3145;">
+        <div style="font-size:10px; color:#8b8f9e; letter-spacing:.15em; margin-bottom:8px;">獲得カード</div>
+        <img id="obtainedCardImg" src="" style="width:100px; border-radius:8px; border:1px solid #C9A227; box-shadow:0 4px 16px rgba(0,0,0,0.5);" />
+        <div id="obtainedCardName" style="font-family:'Playfair Display',serif; font-style:italic; font-size:15px; color:#F4EFE0; margin-top:8px;"></div>
+      </div>
+
       <div style="display:flex; gap:10px;">
         <button id="closeFinalScore" style="flex:1; background:#C9A227; color:#14171f; border:none; border-radius:999px; padding:14px 20px; font-size:15px; font-weight:700; cursor:pointer; touch-action:manipulation;">閉じる</button>
         <button id="shareCardBtn" style="flex:1; background:#1D2130; color:#C9A227; border:1px solid #C9A227; border-radius:999px; padding:14px 20px; font-size:15px; font-weight:700; cursor:pointer; touch-action:manipulation;">画像で共有</button>
       </div>
+    </div>
+  </div>
+
+  <div id="cardAlbumModal" style="display:none; position:fixed; inset:0; height:100dvh; z-index:280; align-items:center; justify-content:center; background:rgba(6,7,12,0.9);">
+    <div style="width:92%; max-width:520px; height:80vh; display:flex; flex-direction:column; background:#161a26; border:1px solid #2c3145; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,0.6); overflow:hidden;">
+      <div style="padding:18px 20px 14px; border-bottom:1px solid #262a3a;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#8b8f9e; letter-spacing:.25em;">CARD ALBUM</span>
+          <span id="cardAlbumCloseBtn" style="color:#8b8f9e; font-size:20px; cursor:pointer; padding:0 6px;">×</span>
+        </div>
+        <div id="cardAlbumProgress" style="font-family:'Playfair Display',serif; font-style:italic; font-size:22px; color:#C9A227; margin-top:6px;">0 / 0</div>
+      </div>
+      <div id="cardAlbumGrid" style="flex:1; overflow-y:auto; padding:16px; display:grid; grid-template-columns:repeat(3, 1fr); gap:10px;"></div>
     </div>
   </div>
 
@@ -772,12 +796,13 @@
   const LIB_DB_NAME = 'karaoke_library';
   const LIB_STORE = 'songs';
   const BEST_STORE = 'bestScores';
+  const CARD_STORE = 'cards';
   let libDbPromise = null;
 
   function openLibraryDb() {
     if (libDbPromise) return libDbPromise;
     libDbPromise = new Promise((resolve, reject) => {
-      const req = indexedDB.open(LIB_DB_NAME, 2);
+      const req = indexedDB.open(LIB_DB_NAME, 3);
       req.onupgradeneeded = () => {
         const db = req.result;
         if (!db.objectStoreNames.contains(LIB_STORE)) {
@@ -786,11 +811,45 @@
         if (!db.objectStoreNames.contains(BEST_STORE)) {
           db.createObjectStore(BEST_STORE, { keyPath: 'songKey' });
         }
+        if (!db.objectStoreNames.contains(CARD_STORE)) {
+          db.createObjectStore(CARD_STORE, { keyPath: 'cardId' });
+        }
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });
     return libDbPromise;
+  }
+
+  async function getAllCollectedCards() {
+    const db = await openLibraryDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(CARD_STORE, 'readonly');
+      const req = tx.objectStore(CARD_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function addCardToCollection(cardId) {
+    const db = await openLibraryDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(CARD_STORE, 'readwrite');
+      const store = tx.objectStore(CARD_STORE);
+      const req = store.get(cardId);
+      req.onsuccess = () => {
+        const existing = req.result;
+        if (existing) {
+          existing.count += 1;
+          existing.lastObtainedAt = Date.now();
+          store.put(existing);
+        } else {
+          store.put({ cardId, count: 1, firstObtainedAt: Date.now(), lastObtainedAt: Date.now() });
+        }
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
   }
 
   function songKeyFor(title, artist) {
@@ -1213,6 +1272,100 @@
     advancedSettings.style.display = showing ? 'none' : 'block';
     advancedToggle.textContent = showing ? '詳細設定を表示' : '詳細設定を隠す';
   });
+
+  // ==================== 星座カード collection ====================
+  const CARD_IMG_apus = "PLACEHOLDER_APUS";
+  const CARD_IMG_andromeda = "PLACEHOLDER_ANDROMEDA";
+  const CARD_IMG_aquario = "PLACEHOLDER_AQUARIO";
+  const CARD_IMG_antlia = "PLACEHOLDER_ANTLIA";
+
+  const CONSTELLATION_CARDS = [
+    { id: 's1_03_apus', no: '03', name: 'Apus', nameJa: 'Uccello del Paradiso', series: 1, image: CARD_IMG_apus },
+    { id: 's1_01_andromeda', no: '01', name: 'Andromeda', nameJa: 'Andromeda', series: 1, image: CARD_IMG_andromeda },
+    { id: 's1_04_aquario', no: '04', name: 'Aquario', nameJa: 'Aquarius', series: 1, image: CARD_IMG_aquario },
+    { id: 's1_02_antlia', no: '02', name: 'Antlia', nameJa: 'Antlia', series: 1, image: CARD_IMG_antlia },
+  ];
+
+  function drawRandomCard() {
+    return CONSTELLATION_CARDS[Math.floor(Math.random() * CONSTELLATION_CARDS.length)];
+  }
+
+  function getCardById(id) {
+    return CONSTELLATION_CARDS.find(c => c.id === id) || null;
+  }
+
+  // ==================== カードアルバム表示 ====================
+  const cardAlbumModal = document.getElementById('cardAlbumModal');
+  const cardAlbumOpenBtn = document.getElementById('cardAlbumOpenBtn');
+  const cardAlbumCloseBtn = document.getElementById('cardAlbumCloseBtn');
+  const cardAlbumGrid = document.getElementById('cardAlbumGrid');
+  const cardAlbumProgress = document.getElementById('cardAlbumProgress');
+
+  async function renderCardAlbum() {
+    let collected = [];
+    try {
+      collected = await getAllCollectedCards();
+    } catch (e) {
+      collected = [];
+    }
+    const collectedMap = new Map(collected.map(c => [c.cardId, c]));
+
+    cardAlbumProgress.textContent = `${collectedMap.size} / ${CONSTELLATION_CARDS.length}`;
+
+    cardAlbumGrid.innerHTML = '';
+    CONSTELLATION_CARDS.forEach(card => {
+      const owned = collectedMap.get(card.id);
+      const cell = document.createElement('div');
+      cell.style.cssText = 'aspect-ratio:3/4; border-radius:10px; overflow:hidden; position:relative; background:#0d0f16; border:1px solid #262a3a; display:flex; align-items:center; justify-content:center;';
+
+      if (owned) {
+        const img = document.createElement('img');
+        img.src = card.image;
+        img.alt = card.name;
+        img.style.cssText = 'width:100%; height:100%; object-fit:cover; display:block;';
+        cell.appendChild(img);
+
+        const label = document.createElement('div');
+        label.textContent = card.name;
+        label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:4px 6px; font-family:"IBM Plex Mono",monospace; font-size:10px; color:#F4EFE0; background:linear-gradient(transparent, rgba(0,0,0,0.75)); text-align:center;';
+        cell.appendChild(label);
+
+        if (owned.count > 1) {
+          const countBadge = document.createElement('div');
+          countBadge.textContent = `×${owned.count}`;
+          countBadge.style.cssText = 'position:absolute; top:4px; right:4px; background:#C9A227; color:#14171f; font-size:10px; font-weight:700; padding:1px 6px; border-radius:999px;';
+          cell.appendChild(countBadge);
+        }
+      } else {
+        cell.style.background = '#14161f';
+        const q = document.createElement('div');
+        q.textContent = '?';
+        q.style.cssText = 'font-family:"Playfair Display",serif; font-style:italic; font-size:26px; color:#3a3e4d;';
+        cell.appendChild(q);
+      }
+
+      cardAlbumGrid.appendChild(cell);
+    });
+  }
+
+  if (cardAlbumOpenBtn) {
+    cardAlbumOpenBtn.addEventListener('click', () => {
+      cardAlbumModal.style.display = 'flex';
+      renderCardAlbum();
+    });
+  }
+  if (cardAlbumCloseBtn) {
+    cardAlbumCloseBtn.addEventListener('click', () => {
+      cardAlbumModal.style.display = 'none';
+    });
+  }
+  if (cardAlbumModal) {
+    cardAlbumModal.addEventListener('click', (e) => {
+      if (e.target === cardAlbumModal) {
+        cardAlbumModal.style.display = 'none';
+      }
+    });
+  }
 
   // ==================== 選曲画面のBGM(著作権フリー音源、クロスフェードでループ) ====================
   const LOBBY_BGM_TRACKS_B64 = [
@@ -2338,6 +2491,14 @@
           setBestScore(songKey, total);
         }
       }).catch(() => {});
+
+      // 星座カードを1枚抽選して獲得
+      const card = drawRandomCard();
+      lastFinalScoreData.cardId = card.id;
+      addCardToCollection(card.id).catch(() => {});
+      obtainedCardImg.src = card.image;
+      obtainedCardName.textContent = `${card.name} / ${card.nameJa}`;
+      obtainedCardBox.style.display = 'block';
     }
     comboDisplay.style.display = 'none';
     comboCelebration.style.display = 'none';
