@@ -134,7 +134,7 @@
   body.perform-mode #scorePanel { display: none !important; }
   body.perform-mode h1 { font-size: clamp(26px, 6vw, 36px) !important; margin-bottom: 4px; }
   body.perform-mode #artistName { font-size: 17px !important; margin-bottom: 10px !important; color: #c7cad6 !important; }
-  body.perform-mode #scoreToggleRow { order: 6; margin-bottom: 4px; }
+  body.perform-mode #scoreToggleRow { display: flex; order: 6; margin-bottom: 4px; }
   body.perform-mode #scoreToggle {
     font-size: 11px !important; padding: 5px 14px !important;
     opacity: 0.75;
@@ -192,7 +192,7 @@
 <body>
 
 <div id="lobbyBgmToggle" class="edit-only" style="position:fixed; bottom:24px; right:8px; z-index:2; background:#1D2130; color:#565b6e; border:1px solid #2c3145; border-radius:999px; padding:4px 10px; font-size:10px; font-weight:600; cursor:pointer;">🎵 BGM: OFF</div>
-<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.23-2</div>
+<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.23-3</div>
 
   <div class="eyebrow">PERSONAL KARAOKE STUDIO</div>
   <h1 id="songTitle">Sotto le Luci</h1>
@@ -358,7 +358,7 @@
     </div>
   </div>
 
-  <div class="row" id="scoreToggleRow" style="justify-content:center;">
+  <div class="row" id="scoreToggleRow" style="justify-content:center; display:none;">
     <div class="btn-secondary" id="scoreToggle" style="flex:0 0 auto; font-size:15px; padding:14px 32px;">採点スタート</div>
   </div>
 
@@ -383,6 +383,14 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <div id="cardReveal" style="display:none; position:fixed; inset:0; height:100dvh; z-index:310; flex-direction:column; align-items:center; justify-content:center; background:radial-gradient(circle at 50% 35%, #1c2033, #05060a 75%);">
+    <canvas id="cardRevealConfetti" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;"></canvas>
+    <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:#8b8f9e; letter-spacing:.35em; margin-bottom:18px;">獲得カード</div>
+    <div id="cardRevealImg" oncontextmenu="return false;" style="width:70%; max-width:300px; aspect-ratio:3/4; border-radius:18px; background-size:cover; background-position:center; border:1px solid #C9A227; box-shadow:0 20px 70px rgba(0,0,0,0.75); filter:brightness(1.2) contrast(1.1); -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; opacity:0; transform:scale(0.9); transition:opacity 0.6s ease, transform 0.6s ease;"></div>
+    <div id="cardRevealName" style="margin-top:20px; font-family:'Playfair Display',serif; font-style:italic; font-size:21px; color:#F4EFE0; text-align:center; opacity:0; transition:opacity 0.6s ease 0.2s;"></div>
+    <button id="cardRevealContinueBtn" style="margin-top:32px; background:#C9A227; color:#14171f; border:none; border-radius:999px; padding:14px 36px; font-size:15px; font-weight:700; cursor:pointer; touch-action:manipulation; opacity:0; transition:opacity 0.6s ease 0.35s;">スコアを見る</button>
   </div>
 
   <div id="finalScore" style="display:none; position:fixed; inset:0; height:100dvh; z-index:300; align-items:center; justify-content:center; background:rgba(6,7,12,0.9);">
@@ -414,9 +422,12 @@
         </div>
       </div>
 
-      <div id="obtainedCardBox" style="display:none; margin-bottom:20px; padding-top:16px; border-top:1px solid rgba(201,162,39,0.4);">
-        <div style="font-size:10px; color:#F4EFE0; letter-spacing:.15em; margin-bottom:6px; text-shadow:0 1px 6px rgba(0,0,0,0.8);">獲得カード</div>
-        <div id="obtainedCardName" style="font-family:'Playfair Display',serif; font-style:italic; font-size:17px; color:#F4EFE0; text-shadow:0 1px 8px rgba(0,0,0,0.9);"></div>
+      <div id="obtainedCardBox" style="display:none; margin-bottom:20px; padding-top:16px; border-top:1px solid #2c3145;">
+        <div style="font-size:10px; color:#8b8f9e; letter-spacing:.15em; margin-bottom:10px;">獲得カード</div>
+        <div style="display:flex; align-items:center; justify-content:center; gap:12px;">
+          <div id="obtainedCardThumb" oncontextmenu="return false;" style="width:52px; height:70px; flex:0 0 auto; border-radius:8px; background-size:cover; background-position:center; border:1px solid #C9A227; cursor:pointer; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;"></div>
+          <div id="obtainedCardName" style="font-family:'Playfair Display',serif; font-style:italic; font-size:16px; color:#F4EFE0;"></div>
+        </div>
       </div>
 
       <div style="display:flex; gap:10px;">
@@ -441,7 +452,7 @@
 
   <div id="cardDetailModal" style="display:none; position:fixed; inset:0; height:100dvh; z-index:290; align-items:center; justify-content:center; background:rgba(4,5,9,0.94);">
     <div style="width:84%; max-width:360px; display:flex; flex-direction:column; align-items:center;">
-      <div id="cardDetailImg" oncontextmenu="return false;" style="width:100%; aspect-ratio:3/4; border-radius:16px; background-size:cover; background-position:center; border:1px solid #C9A227; box-shadow:0 20px 60px rgba(0,0,0,0.7); -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;"></div>
+      <div id="cardDetailImg" oncontextmenu="return false;" style="width:100%; aspect-ratio:3/4; border-radius:16px; background-size:cover; background-position:center; border:1px solid #C9A227; box-shadow:0 20px 60px rgba(0,0,0,0.7); filter:brightness(1.15) contrast(1.1); -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;"></div>
       <div id="cardDetailName" style="margin-top:16px; font-family:'Playfair Display',serif; font-style:italic; font-size:20px; color:#F4EFE0; text-align:center;"></div>
       <div id="cardDetailNo" style="margin-top:4px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#8b8f9e; letter-spacing:.2em;"></div>
       <span id="cardDetailCloseBtn" style="margin-top:22px; color:#8b8f9e; font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.15em; cursor:pointer; padding:8px 18px; border:1px solid #2c3145; border-radius:999px;">閉じる</span>
@@ -1403,14 +1414,16 @@
     CONSTELLATION_CARDS.forEach(card => {
       const owned = collectedMap.get(card.id);
       const cell = document.createElement('div');
-      cell.style.cssText = 'aspect-ratio:3/4; border-radius:10px; overflow:hidden; position:relative; background:#0d0f16; border:1px solid #262a3a; display:flex; align-items:center; justify-content:center;';
+      cell.style.cssText = owned
+        ? 'aspect-ratio:3/4; border-radius:10px; overflow:hidden; position:relative; background:#0d0f16; border:1px solid #C9A227; box-shadow:0 0 12px rgba(201,162,39,0.35); display:flex; align-items:center; justify-content:center;'
+        : 'aspect-ratio:3/4; border-radius:10px; overflow:hidden; position:relative; background:#0d0f16; border:1px solid #262a3a; display:flex; align-items:center; justify-content:center;';
 
       if (owned) {
         cell.oncontextmenu = () => false;
         cell.style.cursor = 'pointer';
         cell.addEventListener('click', () => openCardDetail(card));
         const img = document.createElement('div');
-        img.style.cssText = `width:100%; height:100%; background-image:url('${card.image}'); background-size:cover; background-position:center; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;`;
+        img.style.cssText = `width:100%; height:100%; background-image:url('${card.image}'); background-size:cover; background-position:center; filter:brightness(1.35) contrast(1.15) saturate(1.15); -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;`;
         cell.appendChild(img);
 
         const label = document.createElement('div');
@@ -1878,7 +1891,39 @@
   const finalMaxCombo = document.getElementById('finalMaxCombo');
   const rankTitleEl = document.getElementById('rankTitle');
   const newRecordBanner = document.getElementById('newRecordBanner');
+  const finalScoreCard = document.getElementById('finalScoreCard');
+  const obtainedCardBox = document.getElementById('obtainedCardBox');
+  const obtainedCardThumb = document.getElementById('obtainedCardThumb');
+  const obtainedCardName = document.getElementById('obtainedCardName');
+  const cardReveal = document.getElementById('cardReveal');
+  const cardRevealImg = document.getElementById('cardRevealImg');
+  const cardRevealName = document.getElementById('cardRevealName');
+  const cardRevealContinueBtn = document.getElementById('cardRevealContinueBtn');
   let lastFinalScoreData = null;
+
+  function showCardReveal(card, onContinue) {
+    cardRevealImg.style.opacity = '0';
+    cardRevealImg.style.transform = 'scale(0.9)';
+    cardRevealName.style.opacity = '0';
+    cardRevealContinueBtn.style.opacity = '0';
+    cardRevealImg.style.backgroundImage = `url('${card.image}')`;
+    cardRevealName.textContent = `${card.name} / ${card.nameJa}`;
+    cardReveal.style.display = 'flex';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        cardRevealImg.style.opacity = '1';
+        cardRevealImg.style.transform = 'scale(1)';
+        cardRevealName.style.opacity = '1';
+        cardRevealContinueBtn.style.opacity = '1';
+      });
+    });
+    const finish = () => {
+      cardReveal.style.display = 'none';
+      cardRevealContinueBtn.removeEventListener('click', finish);
+      onContinue();
+    };
+    cardRevealContinueBtn.addEventListener('click', finish);
+  }
 
   let referenceCurve = null; // [{t, hz}]
   let referenceNotes = null; // [{start,end,hz}] 連続音をまとめたノート
@@ -2589,9 +2634,6 @@
       rankTitleEl.textContent = getRankTitle(total);
       newRecordBanner.style.display = 'none';
       window.scrollTo(0, 0);
-      finalScoreBox.style.display = 'flex';
-      animateScoreCountUp(total, 1100);
-      if (total >= 85) { setTimeout(launchConfetti, 200); }
 
       lastFinalScoreData = {
         total, scoopCount, vibratoCount, dynamicsRange, maxCombo,
@@ -2601,22 +2643,28 @@
       };
 
       const songKey = songKeyFor(songTitleInput.value, artistNameInput.value);
+      let isNewRecord = false;
       getBestScore(songKey).then(best => {
         if (!best || total > best.score) {
-          newRecordBanner.style.display = 'block';
+          isNewRecord = true;
           setBestScore(songKey, total);
         }
-      }).catch(() => {});
-
-      // 星座カードを1枚抽選して獲得
-      const card = drawRandomCard();
-      lastFinalScoreData.cardId = card.id;
-      addCardToCollection(card.id).catch(() => {});
-      finalScoreCard.style.backgroundImage = `linear-gradient(rgba(22,26,38,0.18), rgba(22,26,38,0.5) 60%, rgba(22,26,38,0.82)), url('${card.image}')`;
-      obtainedCardName.textContent = `${card.name} / ${card.nameJa}`;
-      obtainedCardBox.style.display = 'block';
-    } else {
-      finalScoreCard.style.backgroundImage = 'none';
+      }).catch(() => {}).finally(() => {
+        // 星座カードを1枚抽選して獲得
+        const card = drawRandomCard();
+        lastFinalScoreData.cardId = card.id;
+        addCardToCollection(card.id).catch(() => {});
+        showCardReveal(card, () => {
+          newRecordBanner.style.display = isNewRecord ? 'block' : 'none';
+          finalScoreBox.style.display = 'flex';
+          animateScoreCountUp(total, 1100);
+          if (total >= 85) { setTimeout(launchConfetti, 200); }
+          obtainedCardThumb.style.backgroundImage = `url('${card.image}')`;
+          obtainedCardThumb.onclick = () => openCardDetail(card);
+          obtainedCardName.textContent = `${card.name} / ${card.nameJa}`;
+          obtainedCardBox.style.display = 'block';
+        });
+      });
     }
     comboDisplay.style.display = 'none';
     comboCelebration.style.display = 'none';
