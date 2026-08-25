@@ -195,7 +195,7 @@
 <body>
 
 <div id="lobbyBgmToggle" class="edit-only" style="position:fixed; bottom:24px; right:8px; z-index:2; background:#1D2130; color:#565b6e; border:1px solid #2c3145; border-radius:999px; padding:4px 10px; font-size:10px; font-weight:600; cursor:pointer;">🎵 BGM: OFF</div>
-<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.23-8</div>
+<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.24-1</div>
 
   <div class="eyebrow">PERSONAL KARAOKE STUDIO</div>
   <h1 id="songTitle">Sotto le Luci</h1>
@@ -1576,8 +1576,15 @@
     googleSignInBtn.addEventListener('click', () => {
       if (!fbAuth) { alert('ログイン機能は準備中です。Firebaseの設定をご確認ください。'); return; }
       const provider = new firebase.auth.GoogleAuthProvider();
-      fbAuth.signInWithRedirect(provider).catch((e) => {
-        alert('ログイン処理を開始できませんでした。\n' + (e && e.message ? e.message : ''));
+      fbAuth.signInWithPopup(provider).catch((e) => {
+        const code = e && e.code;
+        if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment' || code === 'auth/cancelled-popup-request') {
+          fbAuth.signInWithRedirect(provider).catch((e2) => {
+            alert('ログイン処理を開始できませんでした。\n' + (e2 && e2.message ? e2.message : ''));
+          });
+        } else if (code !== 'auth/popup-closed-by-user') {
+          alert('ログインに失敗しました。\n' + (e && e.message ? e.message : code || ''));
+        }
       });
     });
   }
