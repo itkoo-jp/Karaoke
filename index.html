@@ -195,7 +195,7 @@
 <body>
 
 <div id="lobbyBgmToggle" class="edit-only" style="position:fixed; bottom:24px; right:8px; z-index:2; background:#1D2130; color:#565b6e; border:1px solid #2c3145; border-radius:999px; padding:4px 10px; font-size:10px; font-weight:600; cursor:pointer;">🎵 BGM: OFF</div>
-<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.23-7</div>
+<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.23-8</div>
 
   <div class="eyebrow">PERSONAL KARAOKE STUDIO</div>
   <h1 id="songTitle">Sotto le Luci</h1>
@@ -238,9 +238,17 @@
         Googleでログイン
       </div>
     </div>
-    <div id="authSignedIn" style="display:none; width:100%; align-items:center; gap:10px;">
-      <span id="authUserLabel" style="flex:1; font-family:'IBM Plex Mono',monospace; font-size:12px; color:#8b8f9e; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
-      <span id="googleSignOutBtn" style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#8b8f9e; letter-spacing:.1em; cursor:pointer; text-decoration:underline; flex:0 0 auto;">ログアウト</span>
+    <div id="authSignedIn" style="display:none; width:100%; flex-direction:column; gap:8px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:14px;">✅</span>
+        <span id="authUserLabel" style="flex:1; font-family:'IBM Plex Mono',monospace; font-size:12px; color:#F4EFE0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+        <span id="authUsernameEditBtn" style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#8b8f9e; letter-spacing:.1em; cursor:pointer; text-decoration:underline; flex:0 0 auto;">編集</span>
+        <span id="googleSignOutBtn" style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#8b8f9e; letter-spacing:.1em; cursor:pointer; text-decoration:underline; flex:0 0 auto;">ログアウト</span>
+      </div>
+      <div id="authUsernameEditRow" style="display:none; gap:8px; align-items:center;">
+        <input id="authUsernameInput" type="text" maxlength="20" placeholder="表示するニックネームを入力" style="flex:1; background:#0d0f16; border:1px solid #2c3145; border-radius:8px; padding:8px 10px; color:#F4EFE0; font-size:13px;" />
+        <span id="authUsernameSaveBtn" style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#C9A227; letter-spacing:.1em; cursor:pointer; text-decoration:underline; flex:0 0 auto;">保存</span>
+      </div>
     </div>
   </div>
 
@@ -1520,13 +1528,56 @@
   const authSignedOut = document.getElementById('authSignedOut');
   const authSignedIn = document.getElementById('authSignedIn');
   const authUserLabel = document.getElementById('authUserLabel');
+  const authUsernameEditBtn = document.getElementById('authUsernameEditBtn');
+  const authUsernameEditRow = document.getElementById('authUsernameEditRow');
+  const authUsernameInput = document.getElementById('authUsernameInput');
+  const authUsernameSaveBtn = document.getElementById('authUsernameSaveBtn');
+  let currentUsername = '';
+
+  async function loadUsername(uid) {
+    try {
+      const doc = await fbDb.collection('users').doc(uid).get();
+      return doc.exists ? (doc.data().username || '') : '';
+    } catch (e) { return ''; }
+  }
+
+  async function saveUsername(uid, name) {
+    await fbDb.collection('users').doc(uid).set({ username: name, updatedAt: Date.now() }, { merge: true });
+  }
+
+  function updateAuthLabel(user) {
+    authUserLabel.textContent = currentUsername || user.displayName || user.email || 'ログイン中';
+  }
+
+  if (authUsernameEditBtn) {
+    authUsernameEditBtn.addEventListener('click', () => {
+      authUsernameInput.value = currentUsername;
+      authUsernameEditRow.style.display = 'flex';
+      authUsernameInput.focus();
+    });
+  }
+  if (authUsernameSaveBtn) {
+    authUsernameSaveBtn.addEventListener('click', async () => {
+      const name = authUsernameInput.value.trim();
+      if (!name) { alert('ニックネームを入力してください。'); return; }
+      if (!fbUser) return;
+      try {
+        await saveUsername(fbUser.uid, name);
+        currentUsername = name;
+        updateAuthLabel(fbUser);
+        authUsernameEditRow.style.display = 'none';
+      } catch (e) {
+        alert('保存に失敗しました。通信状況をご確認ください。');
+      }
+    });
+  }
 
   if (googleSignInBtn) {
     googleSignInBtn.addEventListener('click', () => {
-      if (!fbAuth) { alert('ログイン機能は準備中です。'); return; }
+      if (!fbAuth) { alert('ログイン機能は準備中です。Firebaseの設定をご確認ください。'); return; }
       const provider = new firebase.auth.GoogleAuthProvider();
-      fbAuth.signInWithRedirect(provider).catch(() => {
-        alert('ログインに失敗しました。');
+      fbAuth.signInWithRedirect(provider).catch((e) => {
+        alert('ログイン処理を開始できませんでした。\n' + (e && e.message ? e.message : ''));
       });
     });
   }
@@ -1536,16 +1587,29 @@
     });
   }
   if (fbAuth) {
-    fbAuth.getRedirectResult().catch(() => {});
-    fbAuth.onAuthStateChanged((user) => {
+    fbAuth.getRedirectResult().catch((e) => {
+      if (e && e.code && e.code !== 'auth/no-auth-event') {
+        alert('ログインに失敗しました。\n' + (e.message || e.code));
+      }
+    });
+    fbAuth.onAuthStateChanged(async (user) => {
       fbUser = user;
       if (user) {
         authSignedOut.style.display = 'none';
         authSignedIn.style.display = 'flex';
-        authUserLabel.textContent = user.displayName || user.email || 'ログイン中';
+        currentUsername = await loadUsername(user.uid);
+        updateAuthLabel(user);
+        if (!currentUsername) {
+          authUsernameInput.value = '';
+          authUsernameEditRow.style.display = 'flex';
+          authUsernameInput.focus();
+        } else {
+          authUsernameEditRow.style.display = 'none';
+        }
       } else {
         authSignedOut.style.display = 'flex';
         authSignedIn.style.display = 'none';
+        authUsernameEditRow.style.display = 'none';
       }
       if (cardAlbumModal && cardAlbumModal.style.display !== 'none') {
         renderCardAlbum();
