@@ -195,7 +195,7 @@
 <body>
 
 <div id="lobbyBgmToggle" class="edit-only" style="position:fixed; bottom:24px; right:8px; z-index:2; background:#1D2130; color:#565b6e; border:1px solid #2c3145; border-radius:999px; padding:4px 10px; font-size:10px; font-weight:600; cursor:pointer;">🎵 BGM: OFF</div>
-<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.24-1</div>
+<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.24-2</div>
 
   <div class="eyebrow">PERSONAL KARAOKE STUDIO</div>
   <h1 id="songTitle">Sotto le Luci</h1>
@@ -2946,15 +2946,20 @@
     comboCelebration.style.display = 'none';
   }
 
-  document.getElementById('closeFinalScore').addEventListener('click', () => {
+  function closeFinalScoreAndReturnToEdit() {
     finalScoreBox.style.display = 'none';
-  });
+    if (document.body.classList.contains('perform-mode')) {
+      modeToggle.click();
+    }
+  }
+
+  document.getElementById('closeFinalScore').addEventListener('click', closeFinalScoreAndReturnToEdit);
   // 背景(カードの外側)をタップしても閉じられるようにする
   let scoreShareBusy = false;
   finalScoreBox.addEventListener('click', (e) => {
     if (scoreShareBusy) return;
     if (e.target === finalScoreBox) {
-      finalScoreBox.style.display = 'none';
+      closeFinalScoreAndReturnToEdit();
     }
   });
 
