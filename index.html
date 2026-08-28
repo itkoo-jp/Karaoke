@@ -209,7 +209,10 @@
 </script>
 
 <div id="lobbyBgmToggle" class="edit-only" style="position:fixed; bottom:24px; right:8px; z-index:2; background:#1D2130; color:#565b6e; border:1px solid #2c3145; border-radius:999px; padding:4px 10px; font-size:10px; font-weight:600; cursor:pointer;">🎵 BGM: OFF</div>
-<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.24-6</div>
+<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; display:flex; align-items:center; gap:8px; pointer-events:auto;">
+  <span id="forceReloadBtn" style="cursor:pointer; text-decoration:underline; pointer-events:auto;">🔄 最新版を確認</span>
+  <span style="pointer-events:none;">v2026.08.24-7</span>
+</div>
 
   <div class="eyebrow">PERSONAL KARAOKE STUDIO</div>
   <h1 id="songTitle">Sotto le Luci</h1>
@@ -536,6 +539,15 @@
 
 <script>
   let lines = [];
+
+  const forceReloadBtn = document.getElementById('forceReloadBtn');
+  if (forceReloadBtn) {
+    forceReloadBtn.addEventListener('click', () => {
+      const url = new URL(location.href);
+      url.searchParams.set('_r', Date.now());
+      location.replace(url.toString());
+    });
+  }
   let useTimerMode = false;
   let timerPlaying = false;
   let timerCurrent = 0;
