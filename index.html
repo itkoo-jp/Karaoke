@@ -209,7 +209,7 @@
 </script>
 
 <div id="lobbyBgmToggle" class="edit-only" style="position:fixed; bottom:24px; right:8px; z-index:2; background:#1D2130; color:#565b6e; border:1px solid #2c3145; border-radius:999px; padding:4px 10px; font-size:10px; font-weight:600; cursor:pointer;">🎵 BGM: OFF</div>
-<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.24-5</div>
+<div style="position:fixed; bottom:6px; right:8px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a3f52; z-index:1; pointer-events:none;">v2026.08.24-6</div>
 
   <div class="eyebrow">PERSONAL KARAOKE STUDIO</div>
   <h1 id="songTitle">Sotto le Luci</h1>
@@ -225,6 +225,12 @@
 
   <div style="text-align:center;">
     <div id="modeToggle">本番モードで歌う</div>
+  </div>
+
+  <div class="row edit-only">
+    <a href="https://colab.research.google.com/drive/1qncruKxFxK8YqlvLYJ162emH8SRtBEFL" target="_blank" rel="noopener" class="btn-secondary" style="flex:1 1 auto; display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none; border-color:#C9A227; color:#C9A227;">
+      🎬 Colabで楽曲データを作成
+    </a>
   </div>
 
   <div class="row edit-only">
@@ -334,9 +340,7 @@
       </label>
     </div>
 
-    <textarea id="lrcInput" style="display:none;">[00:00.00]ここに歌詞を貼り付けてください
-[00:04.20]LRC形式: [分:秒]歌詞
-[00:08.50]上の「歌詞(LRC)を編集」から貼り付け・修正できます</textarea>
+    <textarea id="lrcInput" style="display:none;"></textarea>
 
     <div class="row">
       <div class="btn-secondary" id="tapSyncToggle">タップ同期で精度を上げる</div>
@@ -593,7 +597,7 @@
   function renderLyrics() {
     lyricsBox.innerHTML = '';
     if (lines.length === 0) {
-      lyricsBox.innerHTML = '<div id="placeholder">歌詞がありません。「歌詞(LRC)を編集」から貼り付けてください。</div>';
+      lyricsBox.innerHTML = '<div id="placeholder">歌詞がありません。上の「Colabで楽曲データを作成」またはプロジェクトファイルの読み込みで自動入力するか、「詳細設定を表示」→「歌詞(LRC)を編集」から手入力してください。</div>';
       return;
     }
     lines.forEach((l, i) => {
